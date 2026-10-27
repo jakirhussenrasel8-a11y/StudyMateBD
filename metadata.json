@@ -1,0 +1,6 @@
+{
+  "name": "StudyMate BD",
+  "description": "Mobile-first student study planner for Bangladeshi students with routine, tasks, exam countdown, Pomodoro timer, analytics, and Supabase cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

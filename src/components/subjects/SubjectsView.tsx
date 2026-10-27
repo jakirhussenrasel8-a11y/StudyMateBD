@@ -140,7 +140,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
 
         <button
           onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>{t.subjects.addSubject}</span>
@@ -224,7 +224,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-slate-300 dark:border-slate-800 max-w-lg mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 dark:text-rose-400 flex items-center justify-center mx-auto mb-4">
             <BookOpen className="w-8 h-8" />
           </div>
           <h3 className="font-bold text-base text-slate-900 dark:text-white">
@@ -235,7 +235,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
           </p>
           <button
             onClick={handleOpenCreate}
-            className="mt-5 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
+            className="mt-5 inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md shadow-rose-500/20 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{t.subjects.addSubject}</span>
@@ -243,33 +243,42 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
         </div>
       )}
 
-      {/* Add / Edit Subject Modal */}
+      {/* Add / Edit Subject Modal (Mobile Bottom-Sheet) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsModalOpen(false)}
+        >
           <div 
-            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 relative"
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-rose-100/60 dark:border-slate-800 p-5 sm:p-6 relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {/* Mobile Sheet Drag Indicator */}
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-              {editingSubject ? t.subjects.editSubject : t.subjects.addSubject}
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                {editingSubject ? t.subjects.editSubject : t.subjects.addSubject}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer active:scale-90 transition-transform"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             {formError && (
-              <p className="text-xs text-rose-500 mb-3 bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg">
+              <p className="text-xs text-rose-500 my-2 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-xl shrink-0 font-medium">
                 {formError}
               </p>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="overflow-y-auto pr-1 pt-3 space-y-3.5 flex-1 touch-manipulation">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.subjects.subjectName} *
                 </label>
                 <input
@@ -278,32 +287,33 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t.subjects.subjectNamePlaceholder}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5 text-emerald-500" />
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-rose-500" />
                   <span>{t.subjects.color}</span>
                 </label>
-                <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap py-1">
                   {PRESET_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
-                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                        color === c ? 'scale-125 ring-2 ring-offset-2 ring-emerald-500' : 'hover:scale-110'
+                      className={`w-8 h-8 rounded-full transition-transform cursor-pointer active:scale-90 ${
+                        color === c ? 'scale-125 ring-2 ring-offset-2 ring-rose-500 shadow-sm' : 'hover:scale-110'
                       }`}
                       style={{ backgroundColor: c }}
+                      aria-label={`Color ${c}`}
                     />
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.subjects.description}
                 </label>
                 <textarea
@@ -311,22 +321,22 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="যেমন: ১ম পত্র অধ্যায় ১-৪ রিভিশন ও বোর্ড প্রশ্ন সলভ"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2 text-base sm:text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer min-h-[44px]"
                 >
                   {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-xl shadow-xs shadow-rose-500/20 transition disabled:opacity-50 cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
                 >
                   {isSubmitting ? t.common.loading : t.common.save}
                 </button>
@@ -336,17 +346,22 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal (Mobile Bottom-Sheet) */}
       {deleteConfirmSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setDeleteConfirmSubject(null)}
+        >
           <div 
-            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center"
+            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl border border-rose-100/60 dark:border-slate-800 text-center animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 mx-auto flex items-center justify-center mb-3">
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-4 sm:hidden" />
+
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 mx-auto flex items-center justify-center mb-3">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
               {t.subjects.deleteSubject}?
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -357,7 +372,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
               <button
                 type="button"
                 onClick={() => setDeleteConfirmSubject(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer min-h-[44px]"
               >
                 {t.common.cancel}
               </button>
@@ -365,7 +380,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
               >
                 {t.common.delete}
               </button>

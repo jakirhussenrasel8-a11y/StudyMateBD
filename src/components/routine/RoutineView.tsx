@@ -204,7 +204,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
 
         <button
           onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>{t.routine.addSession}</span>
@@ -225,7 +225,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                 onClick={() => setActiveDay(idx as DayOfWeek)}
                 className={`flex flex-col items-center justify-center py-2.5 sm:py-3 rounded-xl transition cursor-pointer ${
                   isSelected
-                    ? 'bg-emerald-600 text-white font-extrabold shadow-sm'
+                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold shadow-sm'
                     : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                 }`}
               >
@@ -239,7 +239,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                     </span>
                   )}
                   {isToday && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-rose-500'}`} />
                   )}
                 </div>
               </button>
@@ -319,7 +319,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                     <button
                       onClick={() => handleOpenEdit(routine)}
                       title={t.common.edit}
-                      className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -336,8 +336,8 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
             })}
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-slate-300 dark:border-slate-800 max-w-lg mx-auto">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-rose-200 dark:border-rose-900/40 max-w-lg mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center mx-auto mb-4">
               <CalendarDays className="w-8 h-8" />
             </div>
             <h3 className="font-bold text-base text-slate-900 dark:text-white">
@@ -348,7 +348,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
             </p>
             <button
               onClick={handleOpenCreate}
-              className="mt-5 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
+              className="mt-5 inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md shadow-rose-500/20 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{t.routine.addSession}</span>
@@ -357,46 +357,55 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
         )}
       </div>
 
-      {/* Add / Edit Routine Modal */}
+      {/* Add / Edit Routine Modal (Mobile Bottom-Sheet) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsModalOpen(false)}
+        >
           <div 
-            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 relative"
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-rose-100/60 dark:border-slate-800 p-5 sm:p-6 relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {/* Mobile Sheet Drag Indicator */}
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-              {editingRoutine ? t.routine.editSession : t.routine.addSession}
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                {editingRoutine ? t.routine.editSession : t.routine.addSession}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer active:scale-90 transition-transform"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             {formError && (
-              <p className="text-xs text-rose-500 mb-3 bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg">
+              <p className="text-xs text-rose-500 my-2 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-xl shrink-0 font-medium">
                 {formError}
               </p>
             )}
 
             {collisionWarning && (
-              <div className="mb-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+              <div className="my-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 shrink-0">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                 <p>{collisionWarning}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="overflow-y-auto pr-1 pt-3 space-y-3.5 flex-1 touch-manipulation">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.routine.dayOfWeek} *
                 </label>
                 <select
                   value={dayOfWeek}
                   onChange={(e) => handleTimeChange(startTime, endTime, Number(e.target.value) as DayOfWeek)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                 >
                   {t.routine.dayNames.map((name, idx) => (
                     <option key={idx} value={idx}>{name}</option>
@@ -405,14 +414,14 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   বিষয় *
                 </label>
                 <select
                   required
                   value={subjectId}
                   onChange={(e) => setSubjectId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                 >
                   <option value="">-- বিষয় নির্বাচন করুন --</option>
                   {subjects.map(s => (
@@ -423,7 +432,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t.routine.startTime} *
                   </label>
                   <input
@@ -431,11 +440,11 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                     required
                     value={startTime}
                     onChange={(e) => handleTimeChange(e.target.value, endTime, dayOfWeek)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t.routine.endTime} *
                   </label>
                   <input
@@ -443,13 +452,13 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                     required
                     value={endTime}
                     onChange={(e) => handleTimeChange(startTime, e.target.value, dayOfWeek)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.routine.notes} (ঐচ্ছিক)
                 </label>
                 <input
@@ -457,22 +466,22 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="যেমন: ৩য় অধ্যায় রিভিশন ও সৃজনশীল প্র্যাকটিস"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer min-h-[44px]"
                 >
                   {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-xl shadow-md shadow-rose-500/20 transition disabled:opacity-50 cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
                 >
                   {isSubmitting ? t.common.loading : t.common.save}
                 </button>
@@ -482,17 +491,22 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal (Mobile Bottom-Sheet) */}
       {deleteConfirmRoutine && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setDeleteConfirmRoutine(null)}
+        >
           <div 
-            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center"
+            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl border border-rose-100/60 dark:border-slate-800 text-center animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 mx-auto flex items-center justify-center mb-3">
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-4 sm:hidden" />
+
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 mx-auto flex items-center justify-center mb-3">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
               {t.routine.deleteSession}?
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -503,7 +517,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
               <button
                 type="button"
                 onClick={() => setDeleteConfirmRoutine(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer min-h-[44px]"
               >
                 {t.common.cancel}
               </button>
@@ -511,7 +525,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
               >
                 {t.common.delete}
               </button>

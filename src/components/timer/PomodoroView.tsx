@@ -311,11 +311,11 @@ export const PomodoroView: React.FC = () => {
 
       {/* Main Focus Card */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-rose-100/80 dark:border-slate-800 shadow-lg text-center relative overflow-hidden">
-        {/* Mode Selector Tabs */}
-        <div className="inline-flex items-center p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold mb-6">
+        {/* Mode Selector Tabs (Responsive Mobile Width) */}
+        <div className="flex items-center justify-center p-1 sm:p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold mb-6 max-w-sm mx-auto w-full">
           <button
             onClick={() => switchMode('pomodoro')}
-            className={`px-3 sm:px-4 py-2 rounded-xl transition cursor-pointer ${
+            className={`flex-1 py-2 px-1 sm:px-3 rounded-xl transition cursor-pointer text-center text-[11px] sm:text-xs min-h-[38px] flex items-center justify-center ${
               mode === 'pomodoro'
                 ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -325,7 +325,7 @@ export const PomodoroView: React.FC = () => {
           </button>
           <button
             onClick={() => switchMode('short_break')}
-            className={`px-3 sm:px-4 py-2 rounded-xl transition cursor-pointer ${
+            className={`flex-1 py-2 px-1 sm:px-3 rounded-xl transition cursor-pointer text-center text-[11px] sm:text-xs min-h-[38px] flex items-center justify-center ${
               mode === 'short_break'
                 ? 'bg-pink-500 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -335,7 +335,7 @@ export const PomodoroView: React.FC = () => {
           </button>
           <button
             onClick={() => switchMode('long_break')}
-            className={`px-3 sm:px-4 py-2 rounded-xl transition cursor-pointer ${
+            className={`flex-1 py-2 px-1 sm:px-3 rounded-xl transition cursor-pointer text-center text-[11px] sm:text-xs min-h-[38px] flex items-center justify-center ${
               mode === 'long_break'
                 ? 'bg-purple-600 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

@@ -103,7 +103,7 @@ export const AnalyticsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold">{t.analytics.totalStudyTime}</span>
-            <Clock className="w-4 h-4 text-emerald-500" />
+            <Clock className="w-4 h-4 text-rose-500" />
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
             {Math.floor(totalRecordedMinutes / 60)}
@@ -120,7 +120,7 @@ export const AnalyticsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold">{t.dashboard.todayStudyTime}</span>
-            <Calendar className="w-4 h-4 text-blue-500" />
+            <Calendar className="w-4 h-4 text-pink-500" />
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
             {Math.floor(todayStudyMinutes / 60) > 0 && `${Math.floor(todayStudyMinutes / 60)}h `}
@@ -151,7 +151,7 @@ export const AnalyticsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold">{t.analytics.completedTasksRatio}</span>
-            <CheckCircle2 className="w-4 h-4 text-teal-500" />
+            <CheckCircle2 className="w-4 h-4 text-rose-500" />
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
             {taskCompletionRate}%
@@ -168,7 +168,7 @@ export const AnalyticsView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <TrendingUp className="w-4 h-4 text-rose-500" />
               <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                 {t.analytics.last7Days}
               </h3>
@@ -182,21 +182,21 @@ export const AnalyticsView: React.FC = () => {
               return (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                   {/* Tooltip on hover */}
-                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-emerald-600 transition">
+                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-rose-600 transition">
                     {day.minutes > 0 ? `${day.minutes}m` : '0m'}
                   </span>
 
                   <div 
                     className={`w-full max-w-[42px] rounded-t-lg transition-all duration-500 group-hover:brightness-110 ${
                       day.isToday 
-                        ? 'bg-gradient-to-t from-emerald-600 to-teal-500 shadow-sm shadow-emerald-500/20' 
-                        : 'bg-emerald-200 dark:bg-emerald-950/80 border-t border-emerald-300 dark:border-emerald-800'
+                        ? 'bg-gradient-to-t from-rose-500 to-pink-500 shadow-sm shadow-rose-500/20' 
+                        : 'bg-rose-200 dark:bg-rose-950/80 border-t border-rose-300 dark:border-rose-800'
                     }`}
                     style={{ height: `${heightPercent}%` }}
                     title={`${day.date}: ${day.minutes} mins`}
                   />
 
-                  <span className={`text-[11px] font-bold ${day.isToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  <span className={`text-[11px] font-bold ${day.isToday ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
                     {day.dayLabel}
                   </span>
                 </div>
@@ -210,7 +210,7 @@ export const AnalyticsView: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <PieChart className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <PieChart className="w-4 h-4 text-pink-500" />
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                   {t.analytics.subjectBreakdown}
                 </h3>
@@ -254,8 +254,8 @@ export const AnalyticsView: React.FC = () => {
           </div>
 
           {/* Student Productivity Tip */}
-          <div className="mt-6 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+          <div className="mt-6 p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
               {t.analytics.productivityTip}
             </p>

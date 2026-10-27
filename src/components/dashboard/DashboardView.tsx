@@ -642,24 +642,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 4. Edit Student Profile Modal */}
       {isEditProfileOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsEditProfileOpen(false)}
+        >
           <div 
-            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-rose-100 dark:border-slate-800 p-6 relative"
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-rose-100/60 dark:border-slate-800 p-5 sm:p-6 relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile Sheet Drag Handle */}
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+
             <button
               onClick={() => setIsEditProfileOpen(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer active:scale-90"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/25">
-                <GraduationCap className="w-5 h-5" />
+            <div className="flex items-center gap-3 mb-3 shrink-0">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/25 shrink-0">
+                <GraduationCap className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                   {t.dashboard.updateProfileModalTitle}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -668,73 +675,73 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
+            <form onSubmit={handleSaveProfile} className="space-y-3.5 pt-1 overflow-y-auto pr-1 flex-1 touch-manipulation">
               {/* Student Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.dashboard.studentName} *
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="text"
                     required
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
                     placeholder="যেমন: তানভীর আহমেদ"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
               </div>
 
               {/* Student Class / Grade */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.dashboard.studentClass} *
                 </label>
                 <div className="relative">
-                  <School className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <School className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="text"
                     required
                     value={studentClass}
                     onChange={(e) => setStudentClass(e.target.value)}
                     placeholder="যেমন: একাদশ শ্রেণি (HSC 2026) / ১০ম শ্রেণি / অনার্স ২য় বর্ষ"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
               </div>
 
               {/* Institution Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.dashboard.studentInstitution} *
                 </label>
                 <div className="relative">
-                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="text"
                     required
                     value={institution}
                     onChange={(e) => setInstitution(e.target.value)}
                     placeholder="যেমন: ঢাকা রেসিডেনসিয়াল মডেল কলেজ / নটর ডেম কলেজ"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsEditProfileOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer min-h-[44px]"
                 >
                   {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingProfile}
-                  className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-rose-500 via-pink-500 to-rose-500 hover:from-rose-600 hover:to-pink-600 rounded-xl shadow-md shadow-rose-500/20 transition disabled:opacity-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-rose-500 via-pink-500 to-rose-500 hover:from-rose-600 hover:to-pink-600 rounded-xl shadow-md shadow-rose-500/20 transition disabled:opacity-50 cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
                 >
                   {isSavingProfile ? t.common.loading : t.common.save}
                 </button>

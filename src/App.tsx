@@ -59,8 +59,8 @@ const MainLayout: React.FC = () => {
         {/* Desktop / Tablet Sidebar */}
         <Sidebar />
 
-        {/* Dynamic Content View */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">
+        {/* Dynamic Content View with mobile bottom nav clearance */}
+        <main className="flex-1 px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-28 md:pb-8 min-w-0">
           {activeTab === 'dashboard' && (
             <DashboardView
               onOpenCreateTask={handleOpenCreateTask}

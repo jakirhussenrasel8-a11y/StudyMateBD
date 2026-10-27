@@ -218,7 +218,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
 
         <button
           onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>{t.tasks.addTask}</span>
@@ -226,7 +226,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-rose-100/80 dark:border-slate-800 shadow-2xs space-y-3">
         {/* Search Input */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -235,7 +235,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.tasks.searchPlaceholder}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
           />
         </div>
 
@@ -255,7 +255,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                 onClick={() => setStatusFilter(id as any)}
                 className={`px-3 py-1.5 rounded-lg font-bold shrink-0 transition cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
@@ -271,7 +271,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
           >
             <option value="all">সব বিষয় (All Subjects)</option>
             {subjects.map(s => (
@@ -283,7 +283,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
           <select
             value={selectedPriority}
             onChange={(e) => setSelectedPriority(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
           >
             <option value="all">সব গুরুত্ব (All Priorities)</option>
             <option value="high">{t.tasks.priorityHigh}</option>
@@ -295,7 +295,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
           >
             <option value="due_date">জমার তারিখ অনুসারে (By Deadline)</option>
             <option value="priority">গুরুত্ব অনুসারে (By Priority)</option>
@@ -331,8 +331,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                     title={isCompleted ? t.tasks.markPending : t.tasks.markComplete}
                     className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0 ${
                       isCompleted 
-                        ? 'bg-emerald-500 border-emerald-500 text-white' 
-                        : 'border-slate-300 dark:border-slate-600 hover:border-emerald-500'
+                        ? 'bg-rose-500 border-rose-500 text-white' 
+                        : 'border-slate-300 dark:border-slate-600 hover:border-rose-500'
                     }`}
                   >
                     {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -352,7 +352,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                       )}
 
                       {isToday && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800 dark:bg-pink-950/70 dark:text-pink-300">
                           {t.tasks.dueTodayBadge}
                         </span>
                       )}
@@ -401,7 +401,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                   <button
                     onClick={() => handleOpenEdit(task)}
                     title={t.common.edit}
-                    className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -418,8 +418,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
           })}
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-slate-300 dark:border-slate-800 max-w-lg mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-dashed border-rose-200 dark:border-rose-900/40 max-w-lg mx-auto">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center mx-auto mb-4">
             <CheckSquare className="w-8 h-8" />
           </div>
           <h3 className="font-bold text-base text-slate-900 dark:text-white">
@@ -430,7 +430,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
           </p>
           <button
             onClick={handleOpenCreate}
-            className="mt-5 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md cursor-pointer"
+            className="mt-5 inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md shadow-rose-500/20 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{t.tasks.addTask}</span>
@@ -438,33 +438,42 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
         </div>
       )}
 
-      {/* Add / Edit Task Modal */}
+      {/* Add / Edit Task Modal (Mobile Bottom-Sheet on small screens) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setIsModalOpen(false)}
+        >
           <div 
-            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 relative my-8"
+            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-rose-100/60 dark:border-slate-800 p-5 sm:p-6 relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {/* Mobile Sheet Drag Indicator */}
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-              {editingTask ? t.tasks.editTask : t.tasks.addTask}
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                {editingTask ? t.tasks.editTask : t.tasks.addTask}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer active:scale-90 transition-transform"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             {formError && (
-              <p className="text-xs text-rose-500 mb-3 bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg">
+              <p className="text-xs text-rose-500 my-2 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-xl shrink-0 font-medium">
                 {formError}
               </p>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="overflow-y-auto pr-1 pt-3 space-y-3.5 flex-1 touch-manipulation">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.tasks.taskTitle} *
                 </label>
                 <input
@@ -473,18 +482,18 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={t.tasks.taskTitlePlaceholder}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t.tasks.subject}
                 </label>
                 <select
                   value={subjectId}
                   onChange={(e) => setSubjectId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                 >
                   <option value="">{t.tasks.noSubject}</option>
                   {subjects.map(s => (
@@ -495,7 +504,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t.tasks.dueDate} *
                   </label>
                   <input
@@ -503,31 +512,31 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                     required
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t.tasks.dueTime}
                   </label>
                   <input
                     type="time"
                     value={dueTime}
                     onChange={(e) => setDueTime(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t.tasks.priority}
                   </label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as Priority)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   >
                     <option value="high">{t.tasks.priorityHigh}</option>
                     <option value="medium">{t.tasks.priorityMedium}</option>
@@ -536,13 +545,13 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t.tasks.status}
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   >
                     <option value="pending">{t.tasks.statusPending}</option>
                     <option value="in_progress">{t.tasks.statusInProgress}</option>
@@ -551,7 +560,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     {t.tasks.estimatedMinutes}
                   </label>
                   <input
@@ -560,13 +569,13 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                     step="5"
                     value={estimatedMinutes}
                     onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   বিবরণ বা নোট (ঐচ্ছিক)
                 </label>
                 <textarea
@@ -574,22 +583,22 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="যেমন: ৩য় অধ্যায়ের বোর্ড প্রশ্ন সলভ করা ও উত্তর মিলিয়ে দেখা"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer min-h-[44px]"
                 >
                   {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-xl shadow-md shadow-rose-500/20 transition disabled:opacity-50 cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
                 >
                   {isSubmitting ? t.common.loading : t.common.save}
                 </button>
@@ -599,17 +608,22 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal (Mobile Bottom-Sheet on small screens) */}
       {deleteConfirmTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setDeleteConfirmTask(null)}
+        >
           <div 
-            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center"
+            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl border border-rose-100/60 dark:border-slate-800 text-center animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 mx-auto flex items-center justify-center mb-3">
+            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-4 sm:hidden" />
+            
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 mx-auto flex items-center justify-center mb-3">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
               {t.tasks.deleteTask}?
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -620,7 +634,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
               <button
                 type="button"
                 onClick={() => setDeleteConfirmTask(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer min-h-[44px]"
               >
                 {t.common.cancel}
               </button>
@@ -628,7 +642,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs cursor-pointer"
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
               >
                 {t.common.delete}
               </button>

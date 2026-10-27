@@ -103,196 +103,205 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenSet
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div 
-        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative"
+        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-rose-100/60 dark:border-slate-800 overflow-hidden relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Sheet Drag Handle */}
+        <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+          className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer active:scale-90"
+          aria-label="Close"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="p-6 pb-4 text-center border-b border-slate-100 dark:border-slate-800/80 bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/20">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 mx-auto flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 mb-3">
+        <div className="p-5 pb-3 text-center border-b border-slate-100 dark:border-slate-800/80 bg-gradient-to-b from-rose-50/60 to-transparent dark:from-rose-950/20 shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 mx-auto flex items-center justify-center text-white shadow-lg shadow-rose-500/25 mb-2.5">
             <GraduationCap className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
             {authTab === 'login' && t.auth.login}
             {authTab === 'signup' && t.auth.signup}
             {authTab === 'forgot' && t.auth.forgotPassword}
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
             {authTab === 'login' && 'আপনার ক্লাউড অ্যাকাউন্টে প্রবেশ করে সব ডিভাইস থেকে পড়ার ডেটা সিঙ্ক করুন'}
             {authTab === 'signup' && 'বিনামূল্যে অ্যাকাউন্ট খুলে সব ডেটা নিরাপদে ক্লাউডে সংরক্ষণ করুন'}
             {authTab === 'forgot' && 'আপনার ইমেইল দিন, আমরা পাসওয়ার্ড রিসেট লিংক পাঠাব'}
           </p>
         </div>
 
-        {/* Credentials Missing Notice */}
-        {!supabaseConfig.isConfigured && (
-          <div className="m-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
-            <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-            <div>
-              <p className="font-semibold">Supabase ক্লাউড ডেটাবেস এখনো সেটআপ করা হয়নি</p>
-              <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300/80">
-                আপনি নিশ্চিন্তে নিচের <span className="font-bold underline">ডেমো মোড</span> চালিয়ে যেতে পারেন, অথবা বিনামূল্যে ক্লাউড চালু করতে সেটিংসে যান।
-              </p>
-              <button
-                type="button"
-                onClick={() => { onClose(); onOpenSettings(); }}
-                className="mt-1.5 text-xs font-bold text-amber-900 dark:text-amber-200 underline cursor-pointer"
-              >
-                সেটিংস থেকে Supabase যুক্ত করুন &rarr;
-              </button>
+        <div className="overflow-y-auto flex-1 touch-manipulation">
+          {/* Credentials Missing Notice */}
+          {!supabaseConfig.isConfigured && (
+            <div className="m-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-semibold">Supabase ক্লাউড ডেটাবেস এখনো সেটআপ করা হয়নি</p>
+                <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300/80">
+                  আপনি নিশ্চিন্তে নিচের <span className="font-bold underline">ডেমো মোড</span> চালিয়ে যেতে পারেন, অথবা বিনামূল্যে ক্লাউড চালু করতে সেটিংসে যান।
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { onClose(); onOpenSettings(); }}
+                  className="mt-1.5 text-xs font-bold text-amber-900 dark:text-amber-200 underline cursor-pointer"
+                >
+                  সেটিংস থেকে Supabase যুক্ত করুন &rarr;
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Error / Success Notifications */}
-        {errorMessage && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-            <p>{errorMessage}</p>
-          </div>
-        )}
+          {/* Error / Success Notifications */}
+          {errorMessage && (
+            <div className="mx-5 mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <p>{errorMessage}</p>
+            </div>
+          )}
 
-        {successMessage && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 shrink-0 text-emerald-500" />
-            <p>{successMessage}</p>
-          </div>
-        )}
+          {successMessage && (
+            <div className="mx-5 mt-3 p-3 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800 text-xs text-pink-800 dark:text-pink-200 flex items-center gap-2 font-medium">
+              <Sparkles className="w-4 h-4 shrink-0 text-pink-500" />
+              <p>{successMessage}</p>
+            </div>
+          )}
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {authTab === 'signup' && (
+          {/* Form Body */}
+          <form onSubmit={handleSubmit} className="p-5 space-y-3.5">
+            {authTab === 'signup' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  আপনার নাম (Full Name)
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="যেমন: তানভীর আহমেদ"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                আপনার নাম (Full Name)
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {t.auth.email} *
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="যেমন: সাকিব আল হাসান"
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t.auth.email} *
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@example.com"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-
-          {authTab !== 'forgot' && (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {t.auth.password} *
-                </label>
-                {authTab === 'login' && (
-                  <button
-                    type="button"
-                    onClick={() => { setAuthTab('forgot'); setErrorMessage(''); }}
-                    className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                  >
-                    {t.auth.forgotPassword}
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <input
-                  type="password"
+                  type="email"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  minLength={6}
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="student@example.com"
+                  className="w-full pl-10 pr-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                 />
               </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-          >
-            {isSubmitting ? (
-              <span>{t.common.loading}</span>
-            ) : authTab === 'login' ? (
-              <>
-                <LogIn className="w-4 h-4" />
-                <span>{t.auth.login}</span>
-              </>
-            ) : authTab === 'signup' ? (
-              <>
-                <UserPlus className="w-4 h-4" />
-                <span>{t.auth.signup}</span>
-              </>
-            ) : (
-              <>
-                <KeyRound className="w-4 h-4" />
-                <span>{t.auth.resetPassword}</span>
-              </>
+            {authTab !== 'forgot' && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {t.auth.password} *
+                  </label>
+                  {authTab === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => { setAuthTab('forgot'); setErrorMessage(''); }}
+                      className="text-xs text-rose-600 dark:text-rose-400 font-semibold hover:underline cursor-pointer py-1"
+                    >
+                      {t.auth.forgotPassword}
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    minLength={6}
+                    className="w-full pl-10 pr-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
+                  />
+                </div>
+              </div>
             )}
-          </button>
 
-          {/* Toggle between Login / Sign Up */}
-          <div className="text-center pt-2">
-            {authTab === 'login' ? (
-              <button
-                type="button"
-                onClick={() => { setAuthTab('signup'); setErrorMessage(''); }}
-                className="text-xs text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
-              >
-                {t.auth.dontHaveAccount}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setAuthTab('login'); setErrorMessage(''); }}
-                className="text-xs text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium cursor-pointer"
-              >
-                {t.auth.alreadyHaveAccount}
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-extrabold text-sm shadow-md shadow-rose-500/25 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 min-h-[46px] active:scale-98"
+            >
+              {isSubmitting ? (
+                <span>{t.common.loading}</span>
+              ) : authTab === 'login' ? (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  <span>{t.auth.login}</span>
+                </>
+              ) : authTab === 'signup' ? (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  <span>{t.auth.signup}</span>
+                </>
+              ) : (
+                <>
+                  <KeyRound className="w-4 h-4" />
+                  <span>{t.auth.resetPassword}</span>
+                </>
+              )}
+            </button>
+
+            {/* Toggle between Login / Sign Up */}
+            <div className="text-center pt-2">
+              {authTab === 'login' ? (
+                <button
+                  type="button"
+                  onClick={() => { setAuthTab('signup'); setErrorMessage(''); }}
+                  className="text-xs text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-bold cursor-pointer py-1.5"
+                >
+                  {t.auth.dontHaveAccount}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setAuthTab('login'); setErrorMessage(''); }}
+                  className="text-xs text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-bold cursor-pointer py-1.5"
+                >
+                  {t.auth.alreadyHaveAccount}
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Demo Mode Button */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
+            <button
+              type="button"
+              onClick={handleContinueDemo}
+              className="text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition shadow-2xs cursor-pointer inline-flex items-center gap-2 min-h-[44px] active:scale-95"
+            >
+              <span>📱</span>
+              <span>{t.auth.demoMode}</span>
+            </button>
           </div>
-        </form>
-
-        {/* Demo Mode Button */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
-          <button
-            type="button"
-            onClick={handleContinueDemo}
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
-          >
-            <span>📱</span>
-            <span>{t.auth.demoMode}</span>
-          </button>
         </div>
       </div>
     </div>

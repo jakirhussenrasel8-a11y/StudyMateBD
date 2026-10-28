@@ -200,6 +200,23 @@ CREATE TABLE IF NOT EXISTS public.study_sessions (
   notes TEXT
 );
 
+-- Safe migration if you already created tables earlier:
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_class TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS institution TEXT;
+
+-- Study Friends & Peer Leaderboard
+CREATE TABLE IF NOT EXISTS public.friendships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  friend_email TEXT NOT NULL,
+  friend_name TEXT,
+  student_class TEXT,
+  institution TEXT,
+  status TEXT NOT NULL DEFAULT 'accepted',
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  UNIQUE(user_id, friend_email)
+);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
@@ -207,6 +224,7 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
 
 -- Basic user ownership policies (SELECT, INSERT, UPDATE, DELETE)
 CREATE POLICY "user_profiles_policy" ON public.profiles FOR ALL USING (auth.uid() = id);
@@ -214,7 +232,11 @@ CREATE POLICY "user_subjects_policy" ON public.subjects FOR ALL USING (auth.uid(
 CREATE POLICY "user_tasks_policy" ON public.tasks FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "user_routines_policy" ON public.study_routines FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "user_exams_policy" ON public.exams FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_sessions_policy" ON public.study_sessions FOR ALL USING (auth.uid() = user_id);`;
+CREATE POLICY "user_sessions_policy" ON public.study_sessions FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "user_friendships_policy" ON public.friendships FOR ALL USING (auth.uid() = user_id);
+
+-- Allow authenticated students to view peers' public profile metrics (for friends)
+CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO authenticated USING (true);`;
 
   const copySqlToClipboard = () => {
     navigator.clipboard.writeText(sqlSchemaText);

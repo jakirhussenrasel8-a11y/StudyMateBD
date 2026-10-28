@@ -13,6 +13,7 @@ export const translations = {
       exams: "পরীক্ষা",
       timer: "ফোকাস টাইমার",
       analytics: "বিশ্লেষণ",
+      friends: "স্টাডি ফ্রেন্ডস",
       settings: "সেটিংস",
       menu: "মেনু",
     },
@@ -247,6 +248,39 @@ export const translations = {
       deleteNotice: "যদি আপনি সুপাবেজ ক্লাউড ব্যবহার করেন, আপনার সমস্ত ডেটা Row Level Security (RLS) দ্বারা সম্পূর্ণ সুরক্ষিত। অ্যাকাউন্ট মুছে ফেলার জন্য সুপাবেজের auth টেবিল থেকে ডেটা স্বয়ংক্রিয়ভাবে মুছে যায়।",
     },
 
+    // Friends & Study Metrics
+    friends: {
+      title: "স্টাডি ফ্রেন্ডস ও সহপাঠী",
+      subtitle: "বন্ধুদের পড়াশোনার অগ্রগতি ও স্ট্রিক দেখে অনুপ্রাণিত হোন",
+      addFriend: "বন্ধু যুক্ত করুন",
+      friendEmailOrCode: "বন্ধুর ইমেইল বা আইডি",
+      friendName: "বন্ধুর নাম",
+      studentClass: "শ্রেণি / ব্যাচ (ঐচ্ছিক)",
+      institution: "প্রতিষ্ঠান (ঐচ্ছিক)",
+      myIdCard: "আপনার স্টুডেন্ট ফ্রেন্ড কোড",
+      copyCode: "কোড কপি করুন",
+      codeCopied: "ফ্রেন্ড কোড কপি হয়েছে!",
+      tabs: {
+        all: "সব বন্ধু",
+        todayLeaderboard: "আজকের লিডারবোর্ড",
+        weeklyLeaderboard: "সাপ্তাহিক সেরা",
+      },
+      metrics: {
+        today: "আজকের পড়া",
+        weekly: "চলতি সপ্তাহ",
+        streak: "স্টাডি স্ট্রিক",
+        completedTasks: "টাস্ক সমাপ্ত",
+        currentlyStudying: "সাম্প্রতিক বিষয়",
+      },
+      sendKudos: "সাধুবাদ জানান",
+      kudosSent: "সাধুবাদ পাঠানো হয়েছে! 👏",
+      removeFriend: "বন্ধু তালিকা থেকে বাদ দিন",
+      confirmRemove: "আপনি কি নিশ্চিতভাবে এই বন্ধুকে তালিকা থেকে বাদ দিতে চান?",
+      noFriends: "এখনো কোনো স্টাডি ফ্রেন্ড যুক্ত করা হয়নি।",
+      noFriendsDesc: "আপনার সহপাঠীদের যুক্ত করে একসাথে পড়াশোনা ট্র্যাক করুন এবং দৈনিক পড়ার অনুপ্রেরণা নিন।",
+      connectNotice: "সুপাবেজে সাইন ইন করা থাকলে বন্ধুদের সাথে ক্লাউডে সরাসরি মেট্রিক্স সিঙ্ক হবে।",
+    },
+
     // Common
     common: {
       save: "সংরক্ষণ করুন",
@@ -282,6 +316,7 @@ export const translations = {
       exams: "Exams",
       timer: "Focus Timer",
       analytics: "Analytics",
+      friends: "Study Friends",
       settings: "Settings",
       menu: "Menu",
     },
@@ -514,6 +549,39 @@ export const translations = {
       logoutBtn: "Sign Out",
       deleteAccountGuidance: "Account & Data Deletion Guidance",
       deleteNotice: "When connected to Supabase, all records are protected by Row Level Security (RLS). Deleting your account in Supabase removes all associated records automatically via cascade foreign keys.",
+    },
+
+    // Friends & Study Metrics
+    friends: {
+      title: "Study Friends & Peers",
+      subtitle: "Track peer study progress and stay motivated with friends",
+      addFriend: "Add Friend",
+      friendEmailOrCode: "Friend's Email or Student ID",
+      friendName: "Friend's Name",
+      studentClass: "Class / Grade (Optional)",
+      institution: "Institution (Optional)",
+      myIdCard: "Your Student Friend Code",
+      copyCode: "Copy Code",
+      codeCopied: "Friend code copied!",
+      tabs: {
+        all: "All Friends",
+        todayLeaderboard: "Today's Leaderboard",
+        weeklyLeaderboard: "Weekly Top",
+      },
+      metrics: {
+        today: "Today's Study",
+        weekly: "This Week",
+        streak: "Study Streak",
+        completedTasks: "Tasks Done",
+        currentlyStudying: "Recent Subject",
+      },
+      sendKudos: "Send Kudos",
+      kudosSent: "Kudos sent! 👏",
+      removeFriend: "Remove Friend",
+      confirmRemove: "Are you sure you want to remove this friend?",
+      noFriends: "No study friends added yet.",
+      noFriendsDesc: "Add your classmates to share study metrics and motivate each other daily.",
+      connectNotice: "When logged in to Supabase, friend study metrics sync securely to the cloud.",
     },
 
     // Common

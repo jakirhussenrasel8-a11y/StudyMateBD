@@ -14,7 +14,8 @@ import {
   Trash2, 
   X,
   ArrowUpDown,
-  ArrowLeft 
+  ArrowLeft,
+  Play 
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 
@@ -30,6 +31,10 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
     updateTask, 
     deleteTask, 
     toggleTaskCompletion, 
+    language,
+    startTaskTimer,
+    activeTimerTaskId,
+    timerIsRunning,
     t,
     goBack,
     canGoBack,
@@ -425,11 +430,36 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 self-end sm:self-center shrink-0">
+                <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                  {/* Dedicated Countdown Start Button */}
+                  {!isCompleted && (
+                    <button
+                      onClick={() => startTaskTimer(task)}
+                      title={language === 'bn' ? 'এই টাস্কের কাউন্টডাউন টাইমার শুরু করুন' : 'Start countdown timer for this task'}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition shadow-xs cursor-pointer active:scale-95 ${
+                        activeTimerTaskId === task.id && timerIsRunning
+                          ? 'bg-amber-300 text-charcoal-900 border border-amber-400 animate-pulse'
+                          : 'bg-lavender-400 hover:bg-lavender-500 text-charcoal-900 border border-lavender-300'
+                      }`}
+                    >
+                      <Play className="w-3.5 h-3.5 fill-charcoal-900" />
+                      <span>
+                        {activeTimerTaskId === task.id && timerIsRunning
+                          ? (language === 'bn' ? 'চলছে...' : 'Running...')
+                          : (language === 'bn' ? 'শুরু' : 'Start')}
+                      </span>
+                      {task.estimated_minutes ? (
+                        <span className="text-[10px] font-bold opacity-80">
+                          ({task.estimated_minutes}মি)
+                        </span>
+                      ) : null}
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleOpenEdit(task)}
                     title={t.common.edit}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    className="p-1.5 text-slate-400 hover:text-charcoal-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -589,7 +619,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {t.tasks.estimatedMinutes}
+                    {t.tasks.estimatedMinutes} (কাউন্টডাউন)
                   </label>
                   <input
                     type="number"
@@ -597,8 +627,25 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                     step="5"
                     value={estimatedMinutes}
                     onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
+                    className="w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-lavender-400 min-h-[44px]"
                   />
+                  {/* Quick Countdown Format Pills */}
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    {[15, 25, 30, 45, 60, 90].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setEstimatedMinutes(mins)}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                          estimatedMinutes === mins
+                            ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900'
+                            : 'bg-[#F2EDF8] text-charcoal-700 dark:bg-charcoal-800 dark:text-slate-300 hover:bg-lavender-200'
+                        }`}
+                      >
+                        {mins}মি
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

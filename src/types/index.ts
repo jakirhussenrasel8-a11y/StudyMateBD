@@ -75,6 +75,22 @@ export interface Profile {
   created_at: string;
 }
 
+export interface Friend {
+  id: string;
+  user_id: string;
+  friend_email: string;
+  friend_name: string;
+  student_class?: string;
+  institution?: string;
+  today_minutes: number;
+  weekly_minutes: number;
+  study_streak: number;
+  completed_tasks: number;
+  status: 'accepted' | 'pending';
+  last_studied_subject?: string;
+  last_active?: string;
+}
+
 export interface BackupData {
   version: string;
   exported_at: string;
@@ -85,6 +101,7 @@ export interface BackupData {
   routines: StudyRoutine[];
   exams: Exam[];
   sessions: StudySession[];
+  friends?: Friend[];
 }
 
 export type NavTab = 
@@ -95,4 +112,5 @@ export type NavTab =
   | 'exams'
   | 'timer'
   | 'analytics'
+  | 'friends'
   | 'settings';

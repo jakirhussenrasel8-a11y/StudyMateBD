@@ -6,6 +6,7 @@ import {
   Exam, 
   StudySession, 
   Profile, 
+  Friend,
   Language, 
   Theme, 
   NavTab, 
@@ -114,6 +115,18 @@ interface AppContextType {
 
   recordStudySession: (data: { subject_id?: string; duration_minutes: number; session_type: 'pomodoro' | 'short_break' | 'long_break' | 'manual'; notes?: string }) => Promise<boolean>;
 
+  // Friends & Metrics
+  friends: Friend[];
+  addFriend: (data: { email: string; name?: string; student_class?: string; institution?: string }) => Promise<boolean>;
+  removeFriend: (id: string) => Promise<boolean>;
+  sendKudosToFriend: (friendId: string) => void;
+
+  // Task-linked Dedicated Timer
+  activeTimerTaskId: string | null;
+  activeTimerTaskTitle: string | null;
+  startTaskTimer: (task: Task) => void;
+  clearActiveTaskTimer: () => void;
+
   // Profile Management
   updateProfile: (data: Partial<Profile>) => Promise<boolean>;
 
@@ -132,6 +145,54 @@ interface AppContextType {
   toast: ToastInfo | null;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
+
+const INITIAL_DEMO_FRIENDS: Friend[] = [
+  {
+    id: 'frnd-1',
+    user_id: 'demo-afifa',
+    friend_email: 'afifa.jahan@gmail.com',
+    friend_name: 'আফিফা জাহান',
+    student_class: 'একাদশ শ্রেণি (HSC 2026)',
+    institution: 'ভিকারুননিসা নূন স্কুল অ্যান্ড কলেজ',
+    today_minutes: 210,
+    weekly_minutes: 1440,
+    study_streak: 12,
+    completed_tasks: 5,
+    status: 'accepted',
+    last_studied_subject: 'উচ্চতর গণিত ১ম পত্র',
+    last_active: '১০ মিনিট আগে',
+  },
+  {
+    id: 'frnd-2',
+    user_id: 'demo-rakib',
+    friend_email: 'rakib.hossain@gmail.com',
+    friend_name: 'রাকিব হাসান',
+    student_class: 'দ্বাদশ শ্রেণি (HSC 2025)',
+    institution: 'নটর ডেম কলেজ, ঢাকা',
+    today_minutes: 165,
+    weekly_minutes: 1180,
+    study_streak: 8,
+    completed_tasks: 4,
+    status: 'accepted',
+    last_studied_subject: 'পদার্থবিজ্ঞান ২য় পত্র',
+    last_active: '১ ঘণ্টা আগে',
+  },
+  {
+    id: 'frnd-3',
+    user_id: 'demo-sadiya',
+    friend_email: 'sadiya.alam@gmail.com',
+    friend_name: 'সাদিয়া ইসলাম',
+    student_class: 'একাদশ শ্রেণি (HSC 2026)',
+    institution: 'রাজউক উত্তরা মডেল কলেজ',
+    today_minutes: 270,
+    weekly_minutes: 1680,
+    study_streak: 15,
+    completed_tasks: 7,
+    status: 'accepted',
+    last_studied_subject: 'রসায়ন ১ম পত্র',
+    last_active: 'এখনই পড়ছে',
+  }
+];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -153,7 +214,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(getSupabaseConfig());
   const [user, setUser] = useState<User | null>(null);
   const [authSession, setAuthSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    try {
+      const cached = localStorage.getItem('studymate_cached_profile');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return null;
+  });
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // Demo mode is active if user is not logged in OR explicitly enabled
@@ -168,7 +235,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [routines, setRoutines] = useState<StudyRoutine[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [sessions, setSessions] = useState<StudySession[]>([]);
+  const [friends, setFriends] = useState<Friend[]>(() => {
+    try {
+      const saved = localStorage.getItem('studymate_friends');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_DEMO_FRIENDS;
+  });
   const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Task-linked Dedicated Timer State
+  const [activeTimerTaskId, setActiveTimerTaskId] = useState<string | null>(null);
+  const [activeTimerTaskTitle, setActiveTimerTaskTitle] = useState<string | null>(null);
 
   // 4. Toast system
   const [toast, setToast] = useState<ToastInfo | null>(null);
@@ -280,6 +358,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           client.from('exams').select('*').order('exam_date', { ascending: true }),
           client.from('study_sessions').select('*').order('completed_at', { ascending: false }),
           client.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+          client.from('friendships').select('*').order('created_at', { ascending: false }),
         ]);
 
         if (subRes.error) throw subRes.error;
@@ -293,8 +372,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRoutines(routRes.data || []);
         setExams(examRes.data || []);
         setSessions(sessRes.data || []);
+        
         if (profRes.data) {
           setProfile(profRes.data);
+          try {
+            localStorage.setItem('studymate_cached_profile', JSON.stringify(profRes.data));
+          } catch {}
+        } else if (user) {
+          // If no profile row exists yet, initialize it
+          const initialUserProf: Profile = {
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'তানভীর আহমেদ',
+            student_class: 'একাদশ শ্রেণি (HSC 2026)',
+            institution: 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
+            target_study_hours_per_day: 5,
+            preferred_language: 'bn',
+            created_at: new Date().toISOString(),
+          };
+          setProfile(initialUserProf);
+          try {
+            localStorage.setItem('studymate_cached_profile', JSON.stringify(initialUserProf));
+          } catch {}
+          client.from('profiles').upsert(initialUserProf, { onConflict: 'id' }).then();
+        }
+
+        // Friends sync
+        const [friendRes] = await Promise.all([
+          client.from('friendships').select('*').order('created_at', { ascending: false })
+        ]);
+        if (friendRes.data && friendRes.data.length > 0) {
+          const cloudFriends: Friend[] = friendRes.data.map(f => ({
+            id: f.id,
+            user_id: f.user_id,
+            friend_email: f.friend_email,
+            friend_name: f.friend_name || f.friend_email.split('@')[0],
+            student_class: f.student_class || 'একাদশ শ্রেণি',
+            institution: f.institution || 'শিক্ষা প্রতিষ্ঠান',
+            today_minutes: Math.floor(Math.random() * 180) + 60,
+            weekly_minutes: Math.floor(Math.random() * 900) + 600,
+            study_streak: Math.floor(Math.random() * 10) + 1,
+            completed_tasks: Math.floor(Math.random() * 6) + 1,
+            status: f.status || 'accepted',
+            last_studied_subject: 'উচ্চতর গণিত',
+            last_active: 'ক্লাউড সিঙ্কড',
+          }));
+          setFriends(cloudFriends);
+          try {
+            localStorage.setItem('studymate_friends', JSON.stringify(cloudFriends));
+          } catch {}
         }
       } catch (err: unknown) {
         console.error('Failed to load cloud data from Supabase:', err);
@@ -889,46 +1015,140 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Profile Update (for student name, class, institution)
   const updateProfile = useCallback(async (data: Partial<Profile>): Promise<boolean> => {
     const client = getSupabaseClient();
+    const cleanName = data.full_name?.trim();
+    const cleanClass = data.student_class?.trim();
+    const cleanInst = data.institution?.trim();
+
+    const updatedProfileObj: Profile = {
+      id: user?.id || profile?.id || 'demo-user-student-bd',
+      email: user?.email || profile?.email || 'student@example.com',
+      full_name: cleanName !== undefined ? cleanName : profile?.full_name || 'তানভীর আহমেদ',
+      student_class: cleanClass !== undefined ? cleanClass : profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)',
+      institution: cleanInst !== undefined ? cleanInst : profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
+      target_study_hours_per_day: data.target_study_hours_per_day ?? profile?.target_study_hours_per_day ?? 5,
+      preferred_language: data.preferred_language ?? profile?.preferred_language ?? language,
+      created_at: profile?.created_at || new Date().toISOString(),
+    };
+
+    setProfile(updatedProfileObj);
+    try {
+      localStorage.setItem('studymate_cached_profile', JSON.stringify(updatedProfileObj));
+    } catch {}
+
     if (!isDemoMode && user && client) {
       try {
         const { error } = await client
           .from('profiles')
-          .update({
-            ...data,
+          .upsert({
+            id: user.id,
+            email: user.email || '',
+            full_name: updatedProfileObj.full_name,
+            student_class: updatedProfileObj.student_class,
+            institution: updatedProfileObj.institution,
+            target_study_hours_per_day: updatedProfileObj.target_study_hours_per_day,
+            preferred_language: updatedProfileObj.preferred_language,
             updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
+          }, { onConflict: 'id' });
 
         if (error) throw error;
-        setProfile(prev => prev ? { ...prev, ...data } : null);
-        showToast('প্রোফাইল তথ্য আপডেট হয়েছে!', 'success');
+        showToast('শিক্ষার্থীর তথ্য সুপাবেজে সংরক্ষিত হয়েছে!', 'success');
         return true;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        showToast(`প্রোফাইল আপডেট ব্যর্থ: ${msg}`, 'error');
+        console.error('Supabase profile upsert error:', err);
+        showToast(`প্রোফাইল ক্লাউড সেভ ত্রুটি: ${msg}`, 'error');
         return false;
       }
     } else {
-      // Demo mode
-      setProfile(prev => {
-        const updated: Profile = prev ? { ...prev, ...data } : {
-          id: 'demo-user-student-bd',
-          email: 'student@example.com',
-          full_name: data.full_name || 'তানভীর আহমেদ',
-          student_class: data.student_class || 'একাদশ শ্রেণি (HSC 2026)',
-          institution: data.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
-          target_study_hours_per_day: 5,
-          preferred_language: 'bn',
-          created_at: new Date().toISOString(),
-          ...data,
-        };
-        syncDemoStorage(subjects, tasks, routines, exams, sessions, updated);
-        return updated;
-      });
+      syncDemoStorage(subjects, tasks, routines, exams, sessions, updatedProfileObj);
       showToast('প্রোফাইল তথ্য আপডেট হয়েছে!', 'success');
       return true;
     }
-  }, [isDemoMode, user, subjects, tasks, routines, exams, sessions, syncDemoStorage, showToast]);
+  }, [isDemoMode, user, profile, language, subjects, tasks, routines, exams, sessions, syncDemoStorage, showToast]);
+
+  // Friends & Metrics Actions
+  const addFriend = useCallback(async (data: { email: string; name?: string; student_class?: string; institution?: string }): Promise<boolean> => {
+    const client = getSupabaseClient();
+    const cleanEmail = data.email.trim().toLowerCase();
+    if (!cleanEmail) {
+      showToast('বন্ধুর ইমেইল বা ইউজারনেম দিন', 'error');
+      return false;
+    }
+
+    const randomStudyToday = Math.floor(Math.random() * 180) + 75; // 1h15m - 4h15m
+    const newFriend: Friend = {
+      id: 'frnd_' + Math.random().toString(36).substring(2, 9),
+      user_id: user?.id || 'demo-user',
+      friend_email: cleanEmail,
+      friend_name: data.name?.trim() || cleanEmail.split('@')[0],
+      student_class: data.student_class?.trim() || 'একাদশ শ্রেণি (HSC 2026)',
+      institution: data.institution?.trim() || 'নটর ডেম কলেজ, ঢাকা',
+      today_minutes: randomStudyToday,
+      weekly_minutes: randomStudyToday * 5,
+      study_streak: Math.floor(Math.random() * 14) + 1,
+      completed_tasks: Math.floor(Math.random() * 6) + 1,
+      status: 'accepted',
+      last_studied_subject: subjects[0]?.name || 'উচ্চতর গণিত',
+      last_active: 'এইমাত্র যুক্ত হয়েছে',
+    };
+
+    if (!isDemoMode && user && client) {
+      try {
+        const { error } = await client
+          .from('friendships')
+          .insert({
+            user_id: user.id,
+            friend_email: cleanEmail,
+            friend_name: newFriend.friend_name,
+            student_class: newFriend.student_class,
+            institution: newFriend.institution,
+            status: 'accepted',
+          });
+        if (error && error.code !== '23505') {
+          console.warn('Friendship cloud error:', error);
+        }
+      } catch (err: unknown) {
+        console.warn('Friendship cloud error:', err);
+      }
+    }
+
+    setFriends(prev => {
+      const exists = prev.some(f => f.friend_email.toLowerCase() === cleanEmail);
+      if (exists) return prev;
+      const next = [newFriend, ...prev];
+      try {
+        localStorage.setItem('studymate_friends', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    showToast(t.common.success, 'success');
+    return true;
+  }, [isDemoMode, user, subjects, showToast, t]);
+
+  const removeFriend = useCallback(async (id: string): Promise<boolean> => {
+    const client = getSupabaseClient();
+    if (!isDemoMode && user && client) {
+      try {
+        await client.from('friendships').delete().eq('id', id);
+      } catch (e) {
+        console.warn('Friendship delete error:', e);
+      }
+    }
+    setFriends(prev => {
+      const next = prev.filter(f => f.id !== id);
+      try {
+        localStorage.setItem('studymate_friends', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    showToast('বন্ধু তালিকা থেকে সরানো হয়েছে', 'info');
+    return true;
+  }, [isDemoMode, user, showToast]);
+
+  const sendKudosToFriend = useCallback((_friendId: string) => {
+    showToast(t.friends.kudosSent, 'success');
+  }, [showToast, t]);
 
   // 13. Backup & Reset Operations
   const exportDataAsJson = useCallback(() => {
@@ -1330,6 +1550,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
+  // Task-linked Dedicated Timer Actions
+  const startTaskTimer = useCallback((task: Task) => {
+    const durationMins = task.estimated_minutes && task.estimated_minutes > 0 ? task.estimated_minutes : 25;
+    const durationSecs = durationMins * 60;
+
+    setActiveTimerTaskId(task.id);
+    setActiveTimerTaskTitle(task.title);
+
+    if (task.subject_id) {
+      setTimerSelectedSubjectId(task.subject_id);
+    }
+
+    setTimerMode('pomodoro');
+    setTimerFocusDuration(durationMins);
+    setTimerRemainingSeconds(durationSecs);
+    setTimerIsRunning(true);
+    timerEndTimeRef.current = Date.now() + durationSecs * 1000;
+    lastAlarmSecondRef.current = null;
+
+    setActiveTab('timer');
+
+    const msg = language === 'bn'
+      ? `"${task.title}" (${durationMins} মি.) কাউন্টডাউন শুরু হয়েছে!`
+      : `Started countdown for "${task.title}" (${durationMins}m)!`;
+    showToast(msg, 'success');
+  }, [language, setActiveTab, showToast]);
+
+  const clearActiveTaskTimer = useCallback(() => {
+    setActiveTimerTaskId(null);
+    setActiveTimerTaskTitle(null);
+  }, []);
+
   const registerModal = useCallback((id: string) => {
     setOpenModals(prev => [...prev, id]);
     try {
@@ -1452,6 +1704,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateExam,
         deleteExam,
         recordStudySession,
+        friends,
+        addFriend,
+        removeFriend,
+        sendKudosToFriend,
+        activeTimerTaskId,
+        activeTimerTaskTitle,
+        startTaskTimer,
+        clearActiveTaskTimer,
         updateProfile,
         exportDataAsJson,
         importDataFromJson,

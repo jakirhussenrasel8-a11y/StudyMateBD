@@ -14,6 +14,7 @@ import { RoutineView } from './components/routine/RoutineView';
 import { ExamsView } from './components/exams/ExamsView';
 import { PomodoroView } from './components/timer/PomodoroView';
 import { AnalyticsView } from './components/analytics/AnalyticsView';
+import { FriendsView } from './components/friends/FriendsView';
 import { SettingsView } from './components/settings/SettingsView';
 
 const MainLayout: React.FC = () => {
@@ -98,6 +99,10 @@ const MainLayout: React.FC = () => {
 
           {activeTab === 'analytics' && (
             <AnalyticsView />
+          )}
+
+          {activeTab === 'friends' && (
+            <FriendsView />
           )}
 
           {activeTab === 'settings' && (

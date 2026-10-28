@@ -11,7 +11,8 @@ import {
   BarChart3, 
   Settings,
   Database,
-  BellRing
+  BellRing,
+  Users
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -21,6 +22,7 @@ export const Sidebar: React.FC = () => {
     t, 
     pendingTasksCount, 
     exams,
+    friends,
     isDemoMode,
     timerIsRunning,
     timerRemainingSeconds,
@@ -63,6 +65,13 @@ export const Sidebar: React.FC = () => {
       badgeColor: isTimer15sWarning ? 'bg-amber-500 text-white animate-pulse' : 'bg-lavender-400 text-charcoal-900 font-mono'
     },
     { id: 'analytics', label: t.nav.analytics, icon: BarChart3 },
+    { 
+      id: 'friends', 
+      label: t.nav.friends, 
+      icon: Users,
+      badge: friends.length > 0 ? friends.length : undefined,
+      badgeColor: 'bg-lavender-100 text-charcoal-900 font-bold'
+    },
     { id: 'settings', label: t.nav.settings, icon: Settings },
   ];
 

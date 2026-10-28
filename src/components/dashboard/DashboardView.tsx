@@ -23,7 +23,8 @@ import {
   School,
   Search,
   Bell,
-  Star
+  Star,
+  Users
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 
@@ -43,6 +44,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     language, 
     user, 
     profile,
+    friends,
     updateProfile,
     studyStreak, 
     todayStudyMinutes, 
@@ -69,6 +71,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [institution, setInstitution] = useState(profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Sync profile when cloud data arrives
+  useEffect(() => {
+    if (profile) {
+      if (profile.full_name) setStudentName(profile.full_name);
+      if (profile.student_class) setStudentClass(profile.student_class);
+      if (profile.institution) setInstitution(profile.institution);
+    }
+  }, [profile]);
 
   // Register modal for Android back gesture
   useEffect(() => {
@@ -563,6 +574,67 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* 5.5. Study Friends Activity Snapshot */}
+      <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-lavender-100 text-charcoal-900 dark:bg-lavender-950 dark:text-lavender-300 flex items-center justify-center">
+              <Users className="w-5 h-5 text-lavender-600 dark:text-lavender-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-charcoal-900 dark:text-white">
+                {t.friends.title}
+              </h3>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400">
+                বন্ধুদের সাথে পড়ালেখা ও দৈনিক স্ট্রিক
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveTab('friends')}
+            className="text-xs font-black text-charcoal-900 dark:text-white bg-[#F2EDF8] hover:bg-lavender-200 dark:bg-charcoal-800 dark:hover:bg-charcoal-700 px-3.5 py-1.5 rounded-full transition cursor-pointer flex items-center gap-1"
+          >
+            <span>সবাই ({friends.length})</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Friends Avatars & Quick Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {friends.slice(0, 3).map((friend) => (
+            <div
+              key={friend.id}
+              onClick={() => setActiveTab('friends')}
+              className="p-3.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/60 border border-[#E8E5ED] dark:border-charcoal-700/80 hover:border-lavender-300 transition cursor-pointer flex items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#CFE4E0] to-[#C5A7E2] text-charcoal-900 font-black text-sm flex items-center justify-center shrink-0">
+                  {friend.friend_name[0] || 'ব'}
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black text-charcoal-900 dark:text-white truncate">
+                    {friend.friend_name}
+                  </h4>
+                  <div className="flex items-center gap-1.5 text-[11px] text-charcoal-500 dark:text-slate-400 mt-0.5">
+                    <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold">
+                      <Flame className="w-3 h-3 fill-amber-500 text-amber-500" />
+                      {friend.study_streak} দিন
+                    </span>
+                    <span>•</span>
+                    <span>{(friend.today_minutes / 60).toFixed(1)}ঘ</span>
+                  </div>
+                </div>
+              </div>
+
+              <span className="text-[10px] font-bold text-lavender-600 dark:text-lavender-400 shrink-0">
+                {friend.completed_tasks}টি টাস্ক
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 

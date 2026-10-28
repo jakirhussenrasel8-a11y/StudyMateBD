@@ -12,13 +12,21 @@ import {
   Sparkles,
   ArrowLeft,
   BellRing,
-  Flame
+  Flame,
+  CheckSquare,
+  Check,
+  X
 } from 'lucide-react';
 
 export const PomodoroView: React.FC = () => {
   const { 
     subjects, 
     sessions, 
+    activeTimerTaskId,
+    activeTimerTaskTitle,
+    clearActiveTaskTimer,
+    toggleTaskCompletion,
+    language,
     t,
     goBack,
     canGoBack,
@@ -127,6 +135,45 @@ export const PomodoroView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Active Task Link Banner */}
+      {activeTimerTaskId && activeTimerTaskTitle && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FFE49A]/30 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 flex items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-[#FFE49A] text-charcoal-900 flex items-center justify-center shrink-0">
+              <CheckSquare className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                চলমান টাস্কের কাউন্টডাউন
+              </div>
+              <h4 className="text-xs sm:text-sm font-black text-charcoal-900 dark:text-white truncate">
+                {activeTimerTaskTitle}
+              </h4>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                toggleTaskCompletion(activeTimerTaskId);
+                clearActiveTaskTimer();
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-black bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 transition shadow-xs cursor-pointer active:scale-95"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>সম্পন্ন</span>
+            </button>
+            <button
+              onClick={clearActiveTaskTimer}
+              title="টাস্ক আনলিঙ্ক করুন"
+              className="p-1.5 text-charcoal-400 hover:text-charcoal-700 dark:hover:text-slate-200 rounded-full cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 15-Second Alarm Urgent Alert Banner */}
       {isTimer15sWarning && (

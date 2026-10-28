@@ -11,7 +11,8 @@ import {
   BarChart3, 
   Settings, 
   MoreHorizontal,
-  X 
+  X,
+  Users 
 } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
@@ -28,6 +29,7 @@ export const BottomNav: React.FC = () => {
 
   const secondaryTabs: { id: NavTab; label: string; icon: React.ElementType; desc: string }[] = [
     { id: 'subjects', label: t.nav.subjects, icon: BookOpen, desc: t.subjects.subtitle },
+    { id: 'friends', label: t.nav.friends, icon: Users, desc: t.friends.subtitle },
     { id: 'analytics', label: t.nav.analytics, icon: BarChart3, desc: t.analytics.subtitle },
     { id: 'settings', label: t.nav.settings, icon: Settings, desc: t.settings.subtitle },
   ];
@@ -37,7 +39,7 @@ export const BottomNav: React.FC = () => {
     setShowMoreMenu(false);
   };
 
-  const isMoreActive = ['subjects', 'analytics', 'settings'].includes(activeTab);
+  const isMoreActive = ['subjects', 'friends', 'analytics', 'settings'].includes(activeTab);
 
   return (
     <>

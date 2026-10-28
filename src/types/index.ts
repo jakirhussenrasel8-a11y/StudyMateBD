@@ -64,12 +64,15 @@ export interface StudySession {
   notes?: string;
 }
 
+export type Gender = 'male' | 'female';
+
 export interface Profile {
   id: string;
   email: string;
   full_name?: string;
   student_class?: string; // Class / Grade (e.g. HSC 1st Year, Class 10, Honors 2nd Year)
   institution?: string;   // School / College / University / Coaching
+  gender?: Gender;
   target_study_hours_per_day?: number;
   preferred_language?: Language;
   created_at: string;
@@ -80,6 +83,7 @@ export interface Friend {
   user_id: string;
   friend_email: string;
   friend_name: string;
+  gender?: Gender;
   student_class?: string;
   institution?: string;
   today_minutes: number;

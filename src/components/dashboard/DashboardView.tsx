@@ -27,6 +27,8 @@ import {
   Users
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
+import { getSixPeriodGreeting, formatTime12h } from '../../lib/timeFormat';
+import { StudentAvatar } from '../common/StudentAvatar';
 
 interface DashboardViewProps {
   onOpenCreateTask: () => void;
@@ -69,6 +71,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [studentName, setStudentName] = useState(profile?.full_name || 'তানভীর আহমেদ');
   const [studentClass, setStudentClass] = useState(profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)');
   const [institution, setInstitution] = useState(profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ');
+  const [studentGender, setStudentGender] = useState<'male' | 'female'>(profile?.gender || 'male');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -78,6 +81,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       if (profile.full_name) setStudentName(profile.full_name);
       if (profile.student_class) setStudentClass(profile.student_class);
       if (profile.institution) setInstitution(profile.institution);
+      if (profile.gender) setStudentGender(profile.gender);
     }
   }, [profile]);
 
@@ -89,13 +93,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   }, [isEditProfileOpen, registerModal]);
 
-  // Dynamic greeting based on current local hour
+  // Dynamic 6-period cultural greeting (ভোর, সকাল, দুপুর, বিকাল, সন্ধ্যা, রাত)
   const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return t.dashboard.greetingMorning;
-    if (hour < 17) return t.dashboard.greetingAfternoon;
-    return t.dashboard.greetingEvening;
-  }, [t]);
+    return getSixPeriodGreeting(new Date().getHours(), language);
+  }, [language]);
 
   // Formatted today's date
   const formattedToday = useMemo(() => {
@@ -179,6 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setStudentName(profile?.full_name || 'তানভীর আহমেদ');
     setStudentClass(profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)');
     setInstitution(profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ');
+    setStudentGender(profile?.gender || 'male');
     setIsEditProfileOpen(true);
   };
 
@@ -190,6 +192,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         full_name: studentName.trim(),
         student_class: studentClass.trim(),
         institution: institution.trim(),
+        gender: studentGender,
       });
       setIsEditProfileOpen(false);
     } finally {
@@ -214,11 +217,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 1. Header Greeting & Progress Bar Pill (Reference Image Screen 2) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
         <div className="flex items-center gap-3.5">
-          {/* Avatar with pastel ring */}
-          <div className="relative shrink-0">
-            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-lavender-200 dark:bg-charcoal-800 border-2 border-lavender-400 flex items-center justify-center text-charcoal-900 dark:text-white font-black text-lg shadow-xs overflow-hidden">
-              <span className="text-xl">👨‍🎓</span>
-            </div>
+          {/* Avatar with pastel ring & Boy/Girl icon */}
+          <div className="relative shrink-0 cursor-pointer" onClick={handleOpenEditProfile} title="প্রোফাইল পরিবর্তন করুন">
+            <StudentAvatar gender={profile?.gender || 'male'} size="lg" showBadge />
           </div>
 
           <div>
@@ -612,9 +613,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="p-3.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/60 border border-[#E8E5ED] dark:border-charcoal-700/80 hover:border-lavender-300 transition cursor-pointer flex items-center justify-between gap-3"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#CFE4E0] to-[#C5A7E2] text-charcoal-900 font-black text-sm flex items-center justify-center shrink-0">
-                  {friend.friend_name[0] || 'ব'}
-                </div>
+                <StudentAvatar gender={friend.gender || 'male'} size="sm" />
                 <div className="min-w-0">
                   <h4 className="text-xs font-black text-charcoal-900 dark:text-white truncate">
                     {friend.friend_name}
@@ -677,7 +676,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {subject?.name || 'বিষয় নির্ধারিত নেই'}
                         </p>
                         <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-0.5">
-                          {routine.start_time} - {routine.end_time}
+                          {formatTime12h(routine.start_time, language)} - {formatTime12h(routine.end_time, language)}
                           {routine.notes && ` • ${routine.notes}`}
                         </p>
                       </div>
@@ -876,6 +875,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     placeholder="যেমন: ঢাকা রেসিডেনসিয়াল মডেল কলেজ"
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-charcoal-800 dark:text-slate-200 mb-1">
+                  {t.dashboard.studentGender || 'শিক্ষার্থীর লিঙ্গ (আইকন)'}
+                </label>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setStudentGender('male')}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border transition cursor-pointer text-left ${
+                      studentGender === 'male'
+                        ? 'border-sky-400 bg-sky-50 dark:bg-sky-950/40 ring-2 ring-sky-300'
+                        : 'border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <StudentAvatar gender="male" size="md" />
+                    <div>
+                      <p className="text-xs font-black text-charcoal-900 dark:text-white">
+                        {t.dashboard.boy || 'ছাত্র (ছেলে)'}
+                      </p>
+                      <span className="text-[10px] text-charcoal-500 dark:text-slate-400">
+                        ছেলে আইকন
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStudentGender('female')}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border transition cursor-pointer text-left ${
+                      studentGender === 'female'
+                        ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/40 ring-2 ring-rose-300'
+                        : 'border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <StudentAvatar gender="female" size="md" />
+                    <div>
+                      <p className="text-xs font-black text-charcoal-900 dark:text-white">
+                        {t.dashboard.girl || 'ছাত্রী (মেয়ে)'}
+                      </p>
+                      <span className="text-[10px] text-charcoal-500 dark:text-slate-400">
+                        মেয়ে আইকন
+                      </span>
+                    </div>
+                  </button>
                 </div>
               </div>
 

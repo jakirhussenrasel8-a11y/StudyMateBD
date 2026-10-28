@@ -117,9 +117,10 @@ interface AppContextType {
 
   // Friends & Metrics
   friends: Friend[];
-  addFriend: (data: { email: string; name?: string; student_class?: string; institution?: string }) => Promise<boolean>;
+  addFriend: (data: { email: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }) => Promise<boolean>;
   removeFriend: (id: string) => Promise<boolean>;
   sendKudosToFriend: (friendId: string) => void;
+  lookupStudentByEmail: (email: string) => Promise<{ name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null>;
 
   // Task-linked Dedicated Timer
   activeTimerTaskId: string | null;
@@ -129,6 +130,9 @@ interface AppContextType {
 
   // Profile Management
   updateProfile: (data: Partial<Profile>) => Promise<boolean>;
+
+  // Account & Data Deletion
+  deleteUserAccountAndData: () => Promise<boolean>;
 
   // Backup & Reset
   exportDataAsJson: () => void;
@@ -146,53 +150,7 @@ interface AppContextType {
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const INITIAL_DEMO_FRIENDS: Friend[] = [
-  {
-    id: 'frnd-1',
-    user_id: 'demo-afifa',
-    friend_email: 'afifa.jahan@gmail.com',
-    friend_name: 'আফিফা জাহান',
-    student_class: 'একাদশ শ্রেণি (HSC 2026)',
-    institution: 'ভিকারুননিসা নূন স্কুল অ্যান্ড কলেজ',
-    today_minutes: 210,
-    weekly_minutes: 1440,
-    study_streak: 12,
-    completed_tasks: 5,
-    status: 'accepted',
-    last_studied_subject: 'উচ্চতর গণিত ১ম পত্র',
-    last_active: '১০ মিনিট আগে',
-  },
-  {
-    id: 'frnd-2',
-    user_id: 'demo-rakib',
-    friend_email: 'rakib.hossain@gmail.com',
-    friend_name: 'রাকিব হাসান',
-    student_class: 'দ্বাদশ শ্রেণি (HSC 2025)',
-    institution: 'নটর ডেম কলেজ, ঢাকা',
-    today_minutes: 165,
-    weekly_minutes: 1180,
-    study_streak: 8,
-    completed_tasks: 4,
-    status: 'accepted',
-    last_studied_subject: 'পদার্থবিজ্ঞান ২য় পত্র',
-    last_active: '১ ঘণ্টা আগে',
-  },
-  {
-    id: 'frnd-3',
-    user_id: 'demo-sadiya',
-    friend_email: 'sadiya.alam@gmail.com',
-    friend_name: 'সাদিয়া ইসলাম',
-    student_class: 'একাদশ শ্রেণি (HSC 2026)',
-    institution: 'রাজউক উত্তরা মডেল কলেজ',
-    today_minutes: 270,
-    weekly_minutes: 1680,
-    study_streak: 15,
-    completed_tasks: 7,
-    status: 'accepted',
-    last_studied_subject: 'রসায়ন ১ম পত্র',
-    last_active: 'এখনই পড়ছে',
-  }
-];
+const INITIAL_DEMO_FRIENDS: Friend[] = [];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -240,7 +198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem('studymate_friends');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return INITIAL_DEMO_FRIENDS;
+    return [];
   });
   const [isLoadingData, setIsLoadingData] = useState(false);
 
@@ -1025,6 +983,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       full_name: cleanName !== undefined ? cleanName : profile?.full_name || 'তানভীর আহমেদ',
       student_class: cleanClass !== undefined ? cleanClass : profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)',
       institution: cleanInst !== undefined ? cleanInst : profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
+      gender: data.gender ?? profile?.gender ?? 'male',
       target_study_hours_per_day: data.target_study_hours_per_day ?? profile?.target_study_hours_per_day ?? 5,
       preferred_language: data.preferred_language ?? profile?.preferred_language ?? language,
       created_at: profile?.created_at || new Date().toISOString(),
@@ -1045,6 +1004,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             full_name: updatedProfileObj.full_name,
             student_class: updatedProfileObj.student_class,
             institution: updatedProfileObj.institution,
+            gender: updatedProfileObj.gender,
             target_study_hours_per_day: updatedProfileObj.target_study_hours_per_day,
             preferred_language: updatedProfileObj.preferred_language,
             updated_at: new Date().toISOString(),
@@ -1067,7 +1027,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isDemoMode, user, profile, language, subjects, tasks, routines, exams, sessions, syncDemoStorage, showToast]);
 
   // Friends & Metrics Actions
-  const addFriend = useCallback(async (data: { email: string; name?: string; student_class?: string; institution?: string }): Promise<boolean> => {
+  const lookupStudentByEmail = useCallback(async (email: string): Promise<{ name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null> => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return null;
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('profiles')
+          .select('full_name, student_class, institution, gender')
+          .eq('email', cleanEmail)
+          .maybeSingle();
+        if (data && !error) {
+          return {
+            name: data.full_name || undefined,
+            student_class: data.student_class || undefined,
+            institution: data.institution || undefined,
+            gender: data.gender === 'female' ? 'female' : 'male',
+          };
+        }
+      } catch (e) {
+        console.warn('Student email lookup failed:', e);
+      }
+    }
+    return null;
+  }, []);
+
+  const addFriend = useCallback(async (data: { email: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }): Promise<boolean> => {
     const client = getSupabaseClient();
     const cleanEmail = data.email.trim().toLowerCase();
     if (!cleanEmail) {
@@ -1083,6 +1069,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       friend_name: data.name?.trim() || cleanEmail.split('@')[0],
       student_class: data.student_class?.trim() || 'একাদশ শ্রেণি (HSC 2026)',
       institution: data.institution?.trim() || 'নটর ডেম কলেজ, ঢাকা',
+      gender: data.gender || 'male',
       today_minutes: randomStudyToday,
       weekly_minutes: randomStudyToday * 5,
       study_streak: Math.floor(Math.random() * 14) + 1,
@@ -1149,6 +1136,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const sendKudosToFriend = useCallback((_friendId: string) => {
     showToast(t.friends.kudosSent, 'success');
   }, [showToast, t]);
+
+  // Complete Account & Data Deletion
+  const deleteUserAccountAndData = useCallback(async (): Promise<boolean> => {
+    const client = getSupabaseClient();
+    try {
+      if (user && client) {
+        await client.from('study_sessions').delete().eq('user_id', user.id);
+        await client.from('tasks').delete().eq('user_id', user.id);
+        await client.from('exams').delete().eq('user_id', user.id);
+        await client.from('study_routines').delete().eq('user_id', user.id);
+        await client.from('friendships').delete().eq('user_id', user.id);
+        if (user.email) {
+          await client.from('friendships').delete().eq('friend_email', user.email);
+        }
+        await client.from('subjects').delete().eq('user_id', user.id);
+        await client.from('profiles').delete().eq('id', user.id);
+        await client.auth.signOut();
+      }
+    } catch (err) {
+      console.error('Error deleting user account from Supabase:', err);
+    }
+
+    try {
+      localStorage.removeItem('studymate_cached_profile');
+      localStorage.removeItem('studymate_demo_data_v1');
+      localStorage.removeItem('studymate_friends');
+      localStorage.removeItem('studymate_active_tab');
+      localStorage.removeItem('studymate_tab_history');
+      localStorage.removeItem('studymate_timer_state_v1');
+      localStorage.removeItem('studymate_supabase_url');
+      localStorage.removeItem('studymate_supabase_key');
+    } catch {}
+
+    setUser(null);
+    setAuthSession(null);
+    setProfile(null);
+    setSubjects([]);
+    setTasks([]);
+    setRoutines([]);
+    setExams([]);
+    setSessions([]);
+    setFriends([]);
+    setActiveTabState('dashboard');
+    showToast(t.settings.deleteAccountSuccess, 'success');
+    return true;
+  }, [user, showToast, t]);
 
   // 13. Backup & Reset Operations
   const exportDataAsJson = useCallback(() => {
@@ -1708,11 +1741,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addFriend,
         removeFriend,
         sendKudosToFriend,
+        lookupStudentByEmail,
         activeTimerTaskId,
         activeTimerTaskTitle,
         startTaskTimer,
         clearActiveTaskTimer,
         updateProfile,
+        deleteUserAccountAndData,
         exportDataAsJson,
         importDataFromJson,
         resetDemoData,

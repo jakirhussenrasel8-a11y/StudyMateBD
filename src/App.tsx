@@ -3,7 +3,6 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { BottomNav } from './components/common/BottomNav';
-import { DemoBanner } from './components/common/DemoBanner';
 import { Toast } from './components/common/Toast';
 import { AuthModal } from './components/auth/AuthModal';
 
@@ -55,12 +54,6 @@ const MainLayout: React.FC = () => {
 
       {/* Top Header */}
       <Header onOpenAuth={() => setIsAuthModalOpen(true)} />
-
-      {/* Clear Demo Mode / Cloud Connected Banner */}
-      <DemoBanner 
-        onOpenAuth={() => setIsAuthModalOpen(true)} 
-        onOpenSettings={() => setActiveTab('settings')} 
-      />
 
       {/* Main Body Area: Sidebar (Desktop) + Content */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">

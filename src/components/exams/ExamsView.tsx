@@ -15,6 +15,7 @@ import {
   ArrowLeft 
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
+import { formatTime12h } from '../../lib/timeFormat';
 
 interface ExamsViewProps {
   onOpenCreate: () => void;
@@ -286,7 +287,7 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onOpenCreate }) => {
                       <div className="flex items-center gap-1.5 font-medium">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
                         <span>{exam.exam_date}</span>
-                        {exam.exam_time && <span>({exam.exam_time})</span>}
+                        {exam.exam_time && <span>({formatTime12h(exam.exam_time, 'bn')})</span>}
                       </div>
                       {exam.room_or_location && (
                         <div className="flex items-center gap-1.5">

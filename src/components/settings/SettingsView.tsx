@@ -11,21 +11,16 @@ import {
   RotateCcw, 
   Shield, 
   LogOut, 
-  Copy, 
-  Check, 
-  ExternalLink, 
+  Trash2, 
   AlertTriangle, 
-  Code2, 
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  ArrowLeft 
+  ArrowLeft,
+  User,
+  School,
+  Building2,
+  Check,
+  Sparkles
 } from 'lucide-react';
-import { 
-  saveUserSupabaseConfig, 
-  clearUserSupabaseConfig, 
-  testSupabaseConnection 
-} from '../../lib/supabase';
+import { StudentAvatar } from '../common/StudentAvatar';
 
 export const SettingsView: React.FC = () => {
   const { 
@@ -33,9 +28,10 @@ export const SettingsView: React.FC = () => {
     setLanguage, 
     theme, 
     setTheme, 
-    supabaseConfig, 
-    refreshAuthConfig, 
     user, 
+    profile,
+    updateProfile,
+    deleteUserAccountAndData,
     signOut, 
     isDemoMode, 
     exportDataAsJson, 
@@ -47,64 +43,67 @@ export const SettingsView: React.FC = () => {
     registerModal 
   } = useApp();
 
-  // Custom Supabase inputs for mobile users
-  const [supabaseUrl, setSupabaseUrl] = useState(supabaseConfig.url || '');
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState(supabaseConfig.anonKey || '');
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  // Profile fields state
+  const [studentName, setStudentName] = useState(profile?.full_name || 'তানভীর আহমেদ');
+  const [studentClass, setStudentClass] = useState(profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)');
+  const [institution, setInstitution] = useState(profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ');
+  const [studentGender, setStudentGender] = useState<'male' | 'female'>(profile?.gender || 'male');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // Schema guide accordion
-  const [showSqlGuide, setShowSqlGuide] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
+  useEffect(() => {
+    if (profile) {
+      if (profile.full_name) setStudentName(profile.full_name);
+      if (profile.student_class) setStudentClass(profile.student_class);
+      if (profile.institution) setInstitution(profile.institution);
+      if (profile.gender) setStudentGender(profile.gender);
+    }
+  }, [profile]);
 
-  // Reset confirmation modal
+  // Confirmation Modals State
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (showResetConfirm) {
-      const unregister = registerModal('reset-confirm-modal');
-      return unregister;
+      return registerModal('reset-confirm-modal');
     }
   }, [showResetConfirm, registerModal]);
 
-  // File import ref
+  useEffect(() => {
+    if (showDeleteConfirm) {
+      return registerModal('delete-account-modal');
+    }
+  }, [showDeleteConfirm, registerModal]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSaveSupabaseConfig = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTestResult(null);
-
-    if (!supabaseUrl.trim().startsWith('https://')) {
-      showToast('Supabase URL অবশ্যই https:// দিয়ে শুরু হতে হবে', 'error');
-      return;
-    }
-    if (supabaseAnonKey.trim().length < 20) {
-      showToast('সঠিক Anon/Publishable Key দিন', 'error');
-      return;
-    }
-
-    const saved = saveUserSupabaseConfig(supabaseUrl, supabaseAnonKey);
-    if (saved) {
-      refreshAuthConfig();
-      setIsTesting(true);
-      const test = await testSupabaseConnection();
-      setIsTesting(false);
-      setTestResult(test);
-      if (test.success) {
-        showToast('সুপাবেজ সংযোগ সফল হয়েছে!', 'success');
-      } else {
-        showToast(test.message, 'error');
-      }
+    setIsSavingProfile(true);
+    try {
+      await updateProfile({
+        full_name: studentName.trim(),
+        student_class: studentClass.trim(),
+        institution: institution.trim(),
+        gender: studentGender,
+      });
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
-  const handleClearConfig = () => {
-    clearUserSupabaseConfig();
-    setSupabaseUrl('');
-    setSupabaseAnonKey('');
-    setTestResult(null);
-    refreshAuthConfig();
-    showToast('সুপাবেজ কনফিগারেশন মুছে ফেলা হয়েছে। এখন লোকাল ডেমো মোড সক্রিয়।', 'info');
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteUserAccountAndData();
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      console.error(e);
+      showToast('অ্যাকাউন্ট মুছতে ত্রুটি হয়েছে', 'error');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,175 +118,190 @@ export const SettingsView: React.FC = () => {
       }
     };
     reader.readAsText(file);
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const sqlSchemaText = `-- StudyMate BD SQL Schema (Run in Supabase SQL Editor)
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  full_name TEXT,
-  student_class TEXT,
-  institution TEXT,
-  target_study_hours_per_day NUMERIC DEFAULT 4.0,
-  preferred_language TEXT DEFAULT 'bn',
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS public.subjects (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#10b981',
-  icon TEXT DEFAULT 'BookOpen',
-  description TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS public.tasks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  subject_id UUID REFERENCES public.subjects(id) ON DELETE SET NULL,
-  due_date DATE NOT NULL,
-  due_time TIME,
-  priority TEXT NOT NULL DEFAULT 'medium',
-  status TEXT NOT NULL DEFAULT 'pending',
-  estimated_minutes INTEGER DEFAULT 30,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS public.study_routines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  subject_id UUID NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS public.exams (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  subject_id UUID NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE,
-  exam_date DATE NOT NULL,
-  exam_time TIME,
-  room_or_location TEXT,
-  total_marks NUMERIC,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS public.study_sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  subject_id UUID REFERENCES public.subjects(id) ON DELETE SET NULL,
-  duration_minutes INTEGER NOT NULL,
-  session_type TEXT NOT NULL DEFAULT 'pomodoro',
-  completed_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  notes TEXT
-);
-
--- Safe migration if you already created tables earlier:
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_class TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS institution TEXT;
-
--- Study Friends & Peer Leaderboard
-CREATE TABLE IF NOT EXISTS public.friendships (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  friend_email TEXT NOT NULL,
-  friend_name TEXT,
-  student_class TEXT,
-  institution TEXT,
-  status TEXT NOT NULL DEFAULT 'accepted',
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  UNIQUE(user_id, friend_email)
-);
-
--- Enable Row Level Security (RLS)
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.study_routines ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.exams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.study_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
-
--- Basic user ownership policies (SELECT, INSERT, UPDATE, DELETE)
-CREATE POLICY "user_profiles_policy" ON public.profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "user_subjects_policy" ON public.subjects FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_tasks_policy" ON public.tasks FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_routines_policy" ON public.study_routines FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_exams_policy" ON public.exams FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_sessions_policy" ON public.study_sessions FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "user_friendships_policy" ON public.friendships FOR ALL USING (auth.uid() = user_id);
-
--- Allow authenticated students to view peers' public profile metrics (for friends)
-CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO authenticated USING (true);`;
-
-  const copySqlToClipboard = () => {
-    navigator.clipboard.writeText(sqlSchemaText);
-    setCopiedSql(true);
-    showToast('SQL কোড ক্লিপবোর্ডে কপি হয়েছে!', 'success');
-    setTimeout(() => setCopiedSql(false), 3000);
-  };
-
   return (
-    <div className="space-y-6 max-w-3xl mx-auto pb-24 md:pb-8 animate-in fade-in">
-      {/* Header with Back button */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={goBack}
-          className="w-10 h-10 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95 shrink-0"
-          title="পূর্ববর্তী পৃষ্ঠায় ফিরে যান"
-          aria-label="Back"
-        >
-          <ArrowLeft className="w-5 h-5 text-charcoal-900 dark:text-white" />
-        </button>
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
-            {t.settings.title}
-          </h2>
-          <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-0.5">
-            {t.settings.subtitle}
-          </p>
+    <div className="space-y-6 pb-24 md:pb-8 animate-in fade-in max-w-4xl mx-auto">
+      {/* Top Bar with Back Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goBack}
+            className="w-10 h-10 rounded-2xl bg-white dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-200 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center hover:bg-[#F2EDF8] transition cursor-pointer active:scale-95 shadow-xs"
+            title="ফিরে যান"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
+              {t.settings.title}
+            </h1>
+            <p className="text-xs text-charcoal-500 dark:text-slate-400">
+              {t.settings.subtitle}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* 1. Language & Appearance */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-          <Globe className="w-4 h-4 text-rose-500" />
-          <span>{t.settings.languageSection} & {t.settings.themeSection}</span>
+      {/* 1. Student Profile & Gender Avatar (Boy / Girl) */}
+      <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <StudentAvatar gender={studentGender} size="lg" />
+            <div>
+              <h3 className="font-black text-base text-charcoal-900 dark:text-white">
+                {t.dashboard.studentCardTitle || 'শিক্ষার্থীর প্রোফাইল'}
+              </h3>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400">
+                ছেলে বা মেয়ে অবতার নির্বাচন করুন এবং নাম-প্রতিষ্ঠান পরিবর্তন করুন
+              </p>
+            </div>
+          </div>
+
+          <span className="px-3 py-1 rounded-full text-xs font-black bg-lavender-100 dark:bg-charcoal-800 text-charcoal-800 dark:text-lavender-200 border border-lavender-200">
+            {studentGender === 'male' ? 'ছাত্র ♂' : 'ছাত্রী ♀'}
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
+          {/* Gender Selector Buttons */}
+          <div>
+            <label className="block text-xs font-black text-charcoal-800 dark:text-slate-200 mb-2">
+              {t.dashboard.studentGender || 'শিক্ষার্থীর লিঙ্গ (আইকন নির্বাচন)'}
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setStudentGender('male')}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer text-left ${
+                  studentGender === 'male'
+                    ? 'border-sky-400 bg-sky-50 dark:bg-sky-950/40 ring-2 ring-sky-300'
+                    : 'border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800/60 hover:border-slate-300'
+                }`}
+              >
+                <StudentAvatar gender="male" size="md" />
+                <div>
+                  <p className="text-xs font-black text-charcoal-900 dark:text-white">
+                    {t.dashboard.boy || 'ছাত্র (ছেলে)'}
+                  </p>
+                  <span className="text-[11px] text-charcoal-500 dark:text-slate-400">
+                    ছেলে আইকন ও স্টাইল
+                  </span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStudentGender('female')}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer text-left ${
+                  studentGender === 'female'
+                    ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/40 ring-2 ring-rose-300'
+                    : 'border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800/60 hover:border-slate-300'
+                }`}
+              >
+                <StudentAvatar gender="female" size="md" />
+                <div>
+                  <p className="text-xs font-black text-charcoal-900 dark:text-white">
+                    {t.dashboard.girl || 'ছাত্রী (মেয়ে)'}
+                  </p>
+                  <span className="text-[11px] text-charcoal-500 dark:text-slate-400">
+                    মেয়ে আইকন ও স্টাইল
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Student Info Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-black text-charcoal-800 dark:text-slate-200 mb-1">
+                {t.dashboard.studentName}
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-charcoal-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  required
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="যেমন: তানভীর আহমেদ"
+                  className="w-full pl-10 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-charcoal-800 dark:text-slate-200 mb-1">
+                {t.dashboard.studentClass}
+              </label>
+              <div className="relative">
+                <School className="w-4 h-4 text-charcoal-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  required
+                  value={studentClass}
+                  onChange={(e) => setStudentClass(e.target.value)}
+                  placeholder="যেমন: একাদশ শ্রেণি (HSC 2026)"
+                  className="w-full pl-10 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-charcoal-800 dark:text-slate-200 mb-1">
+                {t.dashboard.studentInstitution}
+              </label>
+              <div className="relative">
+                <Building2 className="w-4 h-4 text-charcoal-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  required
+                  value={institution}
+                  onChange={(e) => setInstitution(e.target.value)}
+                  placeholder="যেমন: ঢাকা রেসিডেনসিয়াল মডেল কলেজ"
+                  className="w-full pl-10 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={isSavingProfile}
+              className="px-6 py-2.5 bg-charcoal-900 dark:bg-white text-white dark:text-charcoal-900 rounded-full text-xs font-black transition shadow-xs cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1.5"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>{isSavingProfile ? t.common.loading : t.common.save}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* 2. Language & Theme Preferences */}
+      <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
+        <h3 className="font-black text-base text-charcoal-900 dark:text-white flex items-center gap-2">
+          <Globe className="w-4 h-4 text-lavender-600 dark:text-lavender-400" />
+          <span>{t.settings.languageSection} ও থিম</span>
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Language Switch */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+            <label className="block text-xs font-bold text-charcoal-600 dark:text-slate-400 mb-1.5">
               {t.settings.languageSelect}
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setLanguage('bn')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`py-2 px-3 rounded-2xl text-xs font-black transition cursor-pointer ${
                   language === 'bn'
-                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    ? 'bg-lavender-400 text-charcoal-900 shadow-xs'
+                    : 'bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-[#F2EDF8]'
                 }`}
               >
                 বাংলা (Bengali)
@@ -295,10 +309,10 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
               <button
                 type="button"
                 onClick={() => setLanguage('en')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`py-2 px-3 rounded-2xl text-xs font-black transition cursor-pointer ${
                   language === 'en'
-                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    ? 'bg-lavender-400 text-charcoal-900 shadow-xs'
+                    : 'bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-[#F2EDF8]'
                 }`}
               >
                 English
@@ -306,19 +320,18 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
             </div>
           </div>
 
-          {/* Theme Switch */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-              থিম নির্বাচন (Theme)
+            <label className="block text-xs font-bold text-charcoal-600 dark:text-slate-400 mb-1.5">
+              অ্যাপের থিম
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setTheme('light')}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-xs font-black transition cursor-pointer ${
                   theme === 'light'
-                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    ? 'bg-lavender-400 text-charcoal-900 shadow-xs'
+                    : 'bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-[#F2EDF8]'
                 }`}
               >
                 <Sun className="w-3.5 h-3.5" />
@@ -327,10 +340,10 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
               <button
                 type="button"
                 onClick={() => setTheme('dark')}
-                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-xs font-black transition cursor-pointer ${
                   theme === 'dark'
-                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                    ? 'bg-lavender-400 text-charcoal-900 shadow-xs'
+                    : 'bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-[#F2EDF8]'
                 }`}
               >
                 <Moon className="w-3.5 h-3.5" />
@@ -341,157 +354,26 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
         </div>
       </div>
 
-      {/* 2. Supabase Free Database Configuration */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <Database className="w-4 h-4 text-rose-500" />
-              <span>{t.settings.cloudSection}</span>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {t.settings.cloudDesc}
-            </p>
-          </div>
-
-          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 ${
-            supabaseConfig.isConfigured
-              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-          }`}>
-            {supabaseConfig.isConfigured ? 'সুপাবেজ সক্রিয়' : 'ডেমো মোড'}
-          </span>
-        </div>
-
-        {/* Input Form for Mobile Users */}
-        <form onSubmit={handleSaveSupabaseConfig} className="space-y-3 pt-2">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t.settings.supabaseUrl}
-            </label>
-            <input
-              type="url"
-              required
-              value={supabaseUrl}
-              onChange={(e) => setSupabaseUrl(e.target.value)}
-              placeholder="https://xyzabcdefg.supabase.co"
-              className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t.settings.supabaseAnonKey} (Safe for public browser use)
-            </label>
-            <input
-              type="text"
-              required
-              value={supabaseAnonKey}
-              onChange={(e) => setSupabaseAnonKey(e.target.value)}
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-mono text-[11px]"
-            />
-          </div>
-
-          {/* Test connection alert */}
-          {testResult && (
-            <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-              testResult.success
-                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200'
-                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-200'
-            }`}>
-              <Shield className="w-4 h-4 shrink-0" />
-              <span>{testResult.message}</span>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-2 pt-2">
-            {supabaseConfig.source === 'user' && (
-              <button
-                type="button"
-                onClick={handleClearConfig}
-                className="text-xs text-rose-600 hover:underline cursor-pointer"
-              >
-                ক্রেডেনশিয়াল মুছুন
-              </button>
-            )}
-            <div className="flex items-center gap-2 ml-auto">
-              <button
-                type="submit"
-                disabled={isTesting}
-                className="px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white rounded-xl text-xs font-bold transition shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
-              >
-                {isTesting ? 'সংযোগ পরীক্ষা হচ্ছে...' : t.settings.saveCredentials}
-              </button>
-            </div>
-          </div>
-        </form>
-
-        {/* Collapsible Supabase Setup Guide for Beginners */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => setShowSqlGuide(!showSqlGuide)}
-            className="w-full flex items-center justify-between py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-rose-600 transition cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-rose-500" />
-              <span>{t.settings.showSqlGuide}</span>
-            </div>
-            {showSqlGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-
-          {showSqlGuide && (
-            <div className="mt-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-xs space-y-3">
-              <div className="space-y-1.5 text-slate-700 dark:text-slate-300 leading-relaxed">
-                <p className="font-bold text-slate-900 dark:text-white">📱 মোবাইল থেকে ৫ মিনিটে Supabase ফ্রি ডেটাবেস সেটআপের ধাপ:</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>Supabase.com এ যান এবং ফ্রিতে সাইন আপ করুন।</li>
-                  <li>"New Project" এ ক্লিক করে প্রজেক্টের নাম (যেমন: StudyMate BD) ও একটি ডাটাবেজ পাসওয়ার্ড দিন।</li>
-                  <li>প্রজেক্ট তৈরি হলে বাম পাশের মেনু থেকে <strong>SQL Editor</strong> এ চাপ দিন।</li>
-                  <li>নিচের বাটনে চাপ দিয়ে সম্পূর্ণ SQL কোডটি কপি করুন এবং Supabase SQL Editor এ পেস্ট করে <strong>Run</strong> করুন।</li>
-                  <li>তারপর Supabase এর <strong>Project Settings &rarr; API</strong> এ গিয়ে Project URL এবং anon public key কপি করে উপরের বক্সে পেস্ট করুন।</li>
-                </ol>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-                <span className="text-[11px] text-slate-500">PostgreSQL Schema + RLS Security</span>
-                <button
-                  type="button"
-                  onClick={copySqlToClipboard}
-                  className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  {copiedSql ? <Check className="w-3.5 h-3.5 text-rose-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedSql ? t.common.copied : t.common.copySql}</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* 3. Data Backup, Export & Import */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-          <Download className="w-4 h-4 text-rose-500" />
+      <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
+        <h3 className="font-black text-base text-charcoal-900 dark:text-white flex items-center gap-2">
+          <Download className="w-4 h-4 text-sky-500" />
           <span>{t.settings.backupSection}</span>
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-charcoal-500 dark:text-slate-400">
           {t.settings.backupDesc}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {/* Export JSON */}
           <button
             type="button"
             onClick={exportDataAsJson}
-            className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer"
+            className="flex items-center justify-center gap-2 p-3.5 rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 hover:bg-[#F2EDF8] text-xs font-black text-charcoal-900 dark:text-white transition cursor-pointer"
           >
-            <Download className="w-4 h-4 text-rose-500" />
+            <Download className="w-4 h-4 text-sky-500" />
             <span>{t.settings.exportJson}</span>
           </button>
 
-          {/* Import JSON */}
           <div>
             <input
               type="file"
@@ -503,28 +385,27 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 hover:bg-[#F2EDF8] text-xs font-black text-charcoal-900 dark:text-white transition cursor-pointer"
             >
-              <Upload className="w-4 h-4 text-blue-500" />
+              <Upload className="w-4 h-4 text-lavender-600" />
               <span>{t.settings.importJson}</span>
             </button>
           </div>
         </div>
 
-        {/* Reset Local Demo Data */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="pt-3 border-t border-[#E8E5ED] dark:border-charcoal-800 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            <p className="text-xs font-black text-charcoal-800 dark:text-slate-200">
               {t.settings.resetDemo}
             </p>
-            <p className="text-[11px] text-slate-500">
-              ডেমো ডেটা রিসেট করলে ক্লাউডের ডেটায় কোনো প্রভাব পড়বে না
+            <p className="text-[11px] text-charcoal-500">
+              স্থানীয় ডেটা মুছে ফেলে নতুন পরিচ্ছন্ন শুরু করুন
             </p>
           </div>
           <button
             type="button"
             onClick={() => setShowResetConfirm(true)}
-            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-full border border-charcoal-300 dark:border-charcoal-700 text-charcoal-700 dark:text-slate-300 hover:bg-[#F2EDF8] dark:hover:bg-charcoal-800 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>রিসেট</span>
@@ -532,64 +413,120 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
         </div>
       </div>
 
-      {/* 4. Account & Security Policy */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+      {/* 4. Account, Security & Permanent Account Deletion */}
+      <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
+        <h3 className="font-black text-base text-charcoal-900 dark:text-white flex items-center gap-2">
           <Shield className="w-4 h-4 text-emerald-500" />
           <span>{t.settings.accountSection}</span>
         </h3>
 
         {user ? (
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700">
             <div>
-              <p className="text-xs text-slate-500">{t.settings.userEmail}</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+              <p className="text-xs text-charcoal-500">{t.settings.userEmail}</p>
+              <p className="text-sm font-black text-charcoal-900 dark:text-white mt-0.5">
                 {user.email}
               </p>
             </div>
             <button
               onClick={signOut}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-400 text-xs font-bold transition cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-400 text-xs font-black transition cursor-pointer self-start sm:self-auto"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>{t.settings.logoutBtn}</span>
             </button>
           </div>
         ) : (
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-xs text-slate-600 dark:text-slate-400">
-            বর্তমানে আপনি লোকাল ডেমো মোডে আছেন। সাইন ইন করতে উপরের ব্যানারে ক্লিক করুন।
+          <div className="p-4 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800 text-xs text-charcoal-600 dark:text-slate-400 border border-[#E8E5ED] dark:border-charcoal-700">
+            বর্তমানে আপনি অফলাইন স্টাডি মোডে আছেন। আপনার তথ্য এই ব্রাউজারে সুরক্ষিত।
           </div>
         )}
 
-        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
-          <p className="font-bold text-slate-800 dark:text-slate-200">
+        <div className="p-4 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 text-xs text-charcoal-600 dark:text-slate-400 space-y-1.5">
+          <p className="font-black text-charcoal-800 dark:text-slate-200">
             {t.settings.deleteAccountGuidance}
           </p>
           <p className="leading-relaxed">
             {t.settings.deleteNotice}
           </p>
         </div>
+
+        {/* Permanent Account Deletion Action */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-black transition cursor-pointer active:scale-98"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>{t.settings.deleteAccountBtn || 'অ্যাকাউন্ট ও সমস্ত তথ্য চিরতরে মুছে ফেলুন'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Reset Confirmation Dialog (Mobile Bottom-Sheet) */}
+      {/* Delete Account Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-charcoal-900/80 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div 
+            className="w-full max-w-md bg-white dark:bg-charcoal-900 rounded-t-[32px] sm:rounded-3xl p-6 shadow-2xl border border-rose-200 dark:border-rose-900 text-center animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-[#E8E5ED] dark:bg-charcoal-700 rounded-full mx-auto mb-4 sm:hidden" />
+
+            <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 mx-auto flex items-center justify-center mb-3">
+              <Trash2 className="w-7 h-7" />
+            </div>
+            <h3 className="font-black text-base text-charcoal-900 dark:text-white">
+              {t.settings.deleteAccountConfirmTitle || 'আপনি কি নিশ্চিতভাবে অ্যাকাউন্ট মুছে ফেলতে চান?'}
+            </h3>
+            <p className="text-xs text-charcoal-600 dark:text-slate-400 mt-2 leading-relaxed">
+              {t.settings.deleteAccountWarning || 'সতর্কতা: অ্যাকাউন্ট মুছে ফেললে আপনার সমস্ত পড়ার সেশন, বিষয়, টাস্ক, রুটিন, পরীক্ষার সময়সূচি এবং বন্ধুদের তালিকা ক্লাউড ডাটাবেজ থেকে সম্পূর্ণ মুছে যাবে। এই কাজটি আর ফিরিয়ে আনা সম্ভব নয়।'}
+            </p>
+
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2.5 rounded-full text-xs font-black text-charcoal-700 dark:text-slate-300 bg-[#F8F7FA] dark:bg-charcoal-800 hover:bg-slate-200 transition cursor-pointer min-h-[44px]"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDeleteAccount}
+                className="flex-1 px-4 py-2.5 rounded-full text-xs font-black text-white bg-rose-600 hover:bg-rose-700 transition shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center active:scale-95 disabled:opacity-50"
+              >
+                {isDeleting ? t.common.loading : 'মুছে ফেলুন'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Dialog */}
       {showResetConfirm && (
         <div 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-charcoal-900/80 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => setShowResetConfirm(false)}
         >
           <div 
-            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl border border-rose-100/60 dark:border-slate-800 text-center animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
+            className="w-full max-w-sm bg-white dark:bg-charcoal-900 rounded-t-[32px] sm:rounded-3xl p-6 shadow-2xl border border-amber-200 dark:border-amber-900 text-center animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-4 sm:hidden" />
+            <div className="w-12 h-1.5 bg-[#E8E5ED] dark:bg-charcoal-700 rounded-full mx-auto mb-4 sm:hidden" />
 
             <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 mx-auto flex items-center justify-center mb-3">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+            <h3 className="font-black text-base text-charcoal-900 dark:text-white">
               {t.settings.resetDemo}?
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1">
               {t.settings.resetConfirm}
             </p>
 
@@ -597,7 +534,7 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition cursor-pointer min-h-[44px]"
+                className="flex-1 px-4 py-2.5 rounded-full text-xs font-black text-charcoal-600 dark:text-slate-400 bg-slate-100 dark:bg-charcoal-800 hover:bg-slate-200 transition cursor-pointer min-h-[44px]"
               >
                 {t.common.cancel}
               </button>
@@ -607,7 +544,7 @@ CREATE POLICY "allow_students_read_profiles" ON public.profiles FOR SELECT TO au
                   resetDemoData();
                   setShowResetConfirm(false);
                 }}
-                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 transition shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center active:scale-98"
+                className="flex-1 px-4 py-2.5 rounded-full text-xs font-black text-white bg-amber-600 hover:bg-amber-500 transition shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center active:scale-95"
               >
                 রিসেট সম্পন্ন করুন
               </button>

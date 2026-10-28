@@ -18,6 +18,7 @@ import {
   Play 
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
+import { formatTime12h } from '../../lib/timeFormat';
 
 interface TasksViewProps {
   onOpenCreate: () => void;
@@ -416,7 +417,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>{task.due_date}</span>
-                        {task.due_time && <span>({task.due_time})</span>}
+                        {task.due_time && <span>({formatTime12h(task.due_time, language)})</span>}
                       </span>
 
                       {task.estimated_minutes && (

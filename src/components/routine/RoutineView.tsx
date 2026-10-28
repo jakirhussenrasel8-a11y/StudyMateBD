@@ -12,6 +12,7 @@ import {
   BookOpen,
   ArrowLeft 
 } from 'lucide-react';
+import { formatTime12h } from '../../lib/timeFormat';
 
 interface RoutineViewProps {
   onOpenCreate: () => void;
@@ -302,14 +303,14 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
                   className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-2xs hover:shadow-md transition flex items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    {/* Time Badge */}
-                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-center min-w-[75px] sm:min-w-[90px]">
+                    {/* Time Badge with 12h format */}
+                    <div className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-center min-w-[85px] sm:min-w-[105px]">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        {routine.start_time}
+                        {formatTime12h(routine.start_time, 'bn')}
                       </span>
                       <span className="text-[10px] text-slate-400 font-medium">থেকে</span>
                       <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        {routine.end_time}
+                        {formatTime12h(routine.end_time, 'bn')}
                       </span>
                     </div>
 

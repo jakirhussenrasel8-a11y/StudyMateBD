@@ -20,8 +20,10 @@ import {
   X,
   Heart,
   TrendingUp,
-  Award
+  Award,
+  Loader2
 } from 'lucide-react';
+import { StudentAvatar } from '../common/StudentAvatar';
 
 export const FriendsView: React.FC = () => {
   const { 
@@ -29,6 +31,7 @@ export const FriendsView: React.FC = () => {
     addFriend, 
     removeFriend, 
     sendKudosToFriend, 
+    lookupStudentByEmail,
     user, 
     profile, 
     todayStudyMinutes, 
@@ -53,6 +56,9 @@ export const FriendsView: React.FC = () => {
   const [friendName, setFriendName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [institution, setInstitution] = useState('');
+  const [friendGender, setFriendGender] = useState<'male' | 'female'>('male');
+  const [isSearchingStudent, setIsSearchingStudent] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -83,6 +89,32 @@ export const FriendsView: React.FC = () => {
     setTimeout(() => setCopiedCode(false), 2500);
   };
 
+  const handleEmailChange = async (val: string) => {
+    setFriendEmail(val);
+    const clean = val.trim().toLowerCase();
+    if (clean.includes('@') && clean.length > 5) {
+      setIsSearchingStudent(true);
+      try {
+        const found = await lookupStudentByEmail(clean);
+        if (found) {
+          if (found.name) setFriendName(found.name);
+          if (found.student_class) setStudentClass(found.student_class);
+          if (found.institution) setInstitution(found.institution);
+          if (found.gender) setFriendGender(found.gender);
+          setLookupMessage(t.friends.studentFound || 'শিক্ষার্থীর তথ্য পাওয়া গেছে!');
+        } else {
+          setLookupMessage(null);
+        }
+      } catch {
+        setLookupMessage(null);
+      } finally {
+        setIsSearchingStudent(false);
+      }
+    } else {
+      setLookupMessage(null);
+    }
+  };
+
   const handleAddFriendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!friendEmail.trim()) {
@@ -97,6 +129,7 @@ export const FriendsView: React.FC = () => {
         name: friendName.trim() || undefined,
         student_class: studentClass.trim() || undefined,
         institution: institution.trim() || undefined,
+        gender: friendGender,
       });
 
       if (ok) {
@@ -105,6 +138,7 @@ export const FriendsView: React.FC = () => {
         setFriendName('');
         setStudentClass('');
         setInstitution('');
+        setLookupMessage(null);
       }
     } finally {
       setIsSubmitting(false);
@@ -318,9 +352,7 @@ export const FriendsView: React.FC = () => {
                   {/* Top Bar with Avatar, Info, and Rank if leaderboard */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#CFE4E0] to-[#C5A7E2] text-charcoal-900 font-black text-lg flex items-center justify-center shrink-0 shadow-2xs">
-                        {friend.friend_name[0] || 'ব'}
-                      </div>
+                      <StudentAvatar gender={friend.gender || 'male'} size="md" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="text-base font-black text-charcoal-900 dark:text-white truncate">
@@ -454,18 +486,49 @@ export const FriendsView: React.FC = () => {
 
             <form onSubmit={handleAddFriendSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
-                  {t.friends.friendEmailOrCode} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={friendEmail}
-                  onChange={(e) => setFriendEmail(e.target.value)}
-                  placeholder="যেমন: classmate@gmail.com"
-                  className="w-full px-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300">
+                    {t.friends.friendEmailOrCode} *
+                  </label>
+                  {isSearchingStudent && (
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-lavender-600 animate-pulse">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {t.friends.searchingStudent || 'খোঁজা হচ্ছে...'}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={friendEmail}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    placeholder="যেমন: classmate@gmail.com"
+                    className="w-full px-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
+                  />
+                </div>
+                <p className="text-[11px] text-charcoal-400 dark:text-slate-500 mt-1">
+                  {t.friends.autoLookupHint || 'ইমেইল লিখলে বন্ধুর নাম ও শিক্ষাপ্রতিষ্ঠান স্বয়ংক্রিয়ভাবে খুঁজে বের করা হবে'}
+                </p>
               </div>
+
+              {/* Found Student Profile Card Banner */}
+              {lookupMessage && (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center gap-3 animate-in fade-in">
+                  <StudentAvatar gender={friendGender} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 block">
+                      ✓ {lookupMessage}
+                    </span>
+                    <h4 className="text-xs font-black text-charcoal-900 dark:text-white truncate">
+                      {friendName}
+                    </h4>
+                    <p className="text-[11px] text-charcoal-600 dark:text-slate-400 truncate">
+                      {studentClass} {institution ? `• ${institution}` : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
@@ -508,9 +571,38 @@ export const FriendsView: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-[11px] text-charcoal-400 dark:text-slate-500 italic">
-                {t.friends.connectNotice}
-              </p>
+              {/* Avatar Gender Toggle */}
+              <div>
+                <label className="block text-[11px] font-bold text-charcoal-600 dark:text-slate-400 mb-1.5">
+                  বন্ধুর অবতার আইকন
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFriendGender('male')}
+                    className={`flex items-center gap-2 p-2 rounded-2xl border text-xs font-bold transition cursor-pointer ${
+                      friendGender === 'male' 
+                        ? 'border-sky-400 bg-sky-50 dark:bg-sky-950/40 text-charcoal-900 dark:text-white' 
+                        : 'border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-500'
+                    }`}
+                  >
+                    <StudentAvatar gender="male" size="xs" />
+                    <span>ছাত্র (ছেলে)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFriendGender('female')}
+                    className={`flex items-center gap-2 p-2 rounded-2xl border text-xs font-bold transition cursor-pointer ${
+                      friendGender === 'female' 
+                        ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/40 text-charcoal-900 dark:text-white' 
+                        : 'border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-500'
+                    }`}
+                  >
+                    <StudentAvatar gender="female" size="xs" />
+                    <span>ছাত্রী (মেয়ে)</span>
+                  </button>
+                </div>
+              </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8E5ED] dark:border-charcoal-800">
                 <button

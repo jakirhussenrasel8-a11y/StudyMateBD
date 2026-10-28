@@ -12,6 +12,7 @@ import {
   Timer as TimerIcon,
   BellRing
 } from 'lucide-react';
+import { StudentAvatar } from './StudentAvatar';
 
 interface HeaderProps {
   onOpenAuth: () => void;
@@ -138,9 +139,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setActiveTab('settings')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 text-charcoal-900 dark:text-white text-xs font-bold hover:bg-[#F2EDF8] transition cursor-pointer shadow-xs"
+                className="flex items-center gap-1.5 p-1 pr-3 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 text-charcoal-900 dark:text-white text-xs font-bold hover:bg-[#F2EDF8] transition cursor-pointer shadow-xs"
               >
-                <UserIcon className="w-3.5 h-3.5 text-lavender-600" />
+                <StudentAvatar gender={profile?.gender || 'male'} size="xs" />
                 <span className="max-w-[70px] sm:max-w-[120px] truncate">
                   {profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0]}
                 </span>

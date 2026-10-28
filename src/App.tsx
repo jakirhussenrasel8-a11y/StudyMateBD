@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
@@ -17,8 +17,15 @@ import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { SettingsView } from './components/settings/SettingsView';
 
 const MainLayout: React.FC = () => {
-  const { activeTab, setActiveTab } = useApp();
+  const { activeTab, setActiveTab, registerModal } = useApp();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAuthModalOpen) {
+      const unregister = registerModal('auth-modal');
+      return unregister;
+    }
+  }, [isAuthModalOpen, registerModal]);
 
   // Trigger quick creation from Dashboard
   const handleOpenCreateTask = () => {
@@ -34,7 +41,7 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen flex flex-col bg-[#F8F7FA] dark:bg-[#0E0D12] text-charcoal-900 dark:text-[#F1F1F5] transition-colors">
       {/* Toast Notifications */}
       <Toast />
 
@@ -60,7 +67,7 @@ const MainLayout: React.FC = () => {
         <Sidebar />
 
         {/* Dynamic Content View with mobile bottom nav clearance */}
-        <main className="flex-1 px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-28 md:pb-8 min-w-0">
+        <main className="flex-1 px-3.5 sm:px-6 lg:px-8 pt-3.5 sm:pt-6 pb-28 md:pb-8 min-w-0">
           {activeTab === 'dashboard' && (
             <DashboardView
               onOpenCreateTask={handleOpenCreateTask}

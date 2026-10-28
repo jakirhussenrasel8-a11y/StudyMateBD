@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   Subject, 
   Task, 
@@ -9,7 +9,8 @@ import {
   Language, 
   Theme, 
   NavTab, 
-  BackupData 
+  BackupData,
+  TimerMode 
 } from '../types';
 import { translations } from '../i18n/translations';
 import { 
@@ -42,6 +43,30 @@ interface AppContextType {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
   t: typeof translations.bn;
+  canGoBack: boolean;
+  goBack: () => void;
+  registerModal: (id: string) => () => void;
+  isAnyModalOpen: boolean;
+
+  // Global Background Timer
+  timerMode: TimerMode;
+  timerRemainingSeconds: number;
+  timerIsRunning: boolean;
+  timerTargetSeconds: number;
+  timerSelectedSubjectId: string;
+  timerSoundEnabled: boolean;
+  timerFocusDuration: number;
+  timerShortBreakDuration: number;
+  timerLongBreakDuration: number;
+  isTimer15sWarning: boolean;
+  startTimer: () => void;
+  pauseTimer: () => void;
+  resetTimer: () => void;
+  skipTimer: () => void;
+  switchTimerMode: (mode: TimerMode) => void;
+  setTimerSelectedSubjectId: (id: string) => void;
+  setTimerSoundEnabled: (enabled: boolean) => void;
+  setTimerDurations: (focus: number, shortBreak: number, longBreak: number) => void;
 
   // Mode & Auth
   isDemoMode: boolean;
@@ -120,7 +145,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (localStorage.getItem('studymate_theme') as Theme) || 'light';
   });
 
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [activeTab, setActiveTabState] = useState<NavTab>('dashboard');
+  const [tabHistory, setTabHistory] = useState<NavTab[]>(['dashboard']);
+  const [openModals, setOpenModals] = useState<string[]>([]);
 
   // 2. Auth & Connection State
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(getSupabaseConfig());
@@ -1071,6 +1098,294 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [showToast, t]);
 
+  // --- Audio Synthesis (Warning Alert and Completion Chime) ---
+  const playWarningBeepSound = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1046, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.16);
+    } catch (err) {
+      console.warn('Audio warning tone error:', err);
+    }
+  }, []);
+
+  const playCompletionChimeSound = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + duration);
+      };
+      playTone(523.25, 0, 0.4);      // C5
+      playTone(659.25, 0.15, 0.4);   // E5
+      playTone(783.99, 0.3, 0.45);   // G5
+      playTone(1046.50, 0.45, 0.7);  // C6
+    } catch (err) {
+      console.warn('Audio chime error:', err);
+    }
+  }, []);
+
+  // --- GLOBAL PERSISTENT TIMER STATE ---
+  const [timerMode, setTimerMode] = useState<TimerMode>('pomodoro');
+  const [timerFocusDuration, setTimerFocusDuration] = useState<number>(() => {
+    return Number(localStorage.getItem('studymate_pomo_focus')) || 25;
+  });
+  const [timerShortBreakDuration, setTimerShortBreakDuration] = useState<number>(() => {
+    return Number(localStorage.getItem('studymate_pomo_short')) || 5;
+  });
+  const [timerLongBreakDuration, setTimerLongBreakDuration] = useState<number>(() => {
+    return Number(localStorage.getItem('studymate_pomo_long')) || 15;
+  });
+  const [timerSelectedSubjectId, setTimerSelectedSubjectId] = useState<string>('');
+  const [timerSoundEnabled, setTimerSoundEnabled] = useState<boolean>(true);
+  const [timerIsRunning, setTimerIsRunning] = useState<boolean>(false);
+
+  const getTargetSeconds = useCallback((mode: TimerMode, focus: number, shortB: number, longB: number) => {
+    if (mode === 'pomodoro') return focus * 60;
+    if (mode === 'short_break') return shortB * 60;
+    return longB * 60;
+  }, []);
+
+  const [timerRemainingSeconds, setTimerRemainingSeconds] = useState<number>(() => {
+    const focus = Number(localStorage.getItem('studymate_pomo_focus')) || 25;
+    return focus * 60;
+  });
+
+  const timerEndTimeRef = useRef<number | null>(null);
+  const timerIntervalRef = useRef<number | null>(null);
+  const lastAlarmSecondRef = useRef<number | null>(null);
+
+  const timerTargetSeconds = useMemo(() => {
+    return getTargetSeconds(timerMode, timerFocusDuration, timerShortBreakDuration, timerLongBreakDuration);
+  }, [timerMode, timerFocusDuration, timerShortBreakDuration, timerLongBreakDuration, getTargetSeconds]);
+
+  const isTimer15sWarning = useMemo(() => {
+    return timerIsRunning && timerRemainingSeconds <= 15 && timerRemainingSeconds > 0;
+  }, [timerIsRunning, timerRemainingSeconds]);
+
+  const handleTimerComplete = useCallback(async () => {
+    setTimerIsRunning(false);
+    timerEndTimeRef.current = null;
+    lastAlarmSecondRef.current = null;
+
+    if (timerSoundEnabled) {
+      playCompletionChimeSound();
+    }
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate([150, 80, 200]); } catch { /* ignore */ }
+    }
+
+    if (timerMode === 'pomodoro') {
+      await recordStudySession({
+        subject_id: timerSelectedSubjectId || undefined,
+        duration_minutes: timerFocusDuration,
+        session_type: 'pomodoro',
+        notes: `Pomodoro Focus Session (${timerFocusDuration}m)`,
+      });
+      showToast(language === 'bn' ? 'অভিনন্দন! আপনার ফোকাস সেশন সফলভাবে সম্পন্ন হয়েছে 🎉' : 'Congratulations! Focus session completed 🎉', 'success');
+      setTimerMode('short_break');
+      const nextSec = timerShortBreakDuration * 60;
+      setTimerRemainingSeconds(nextSec);
+    } else {
+      showToast(language === 'bn' ? 'বিরতি শেষ! পড়াশোনায় মনোনিবেশ করুন 📚' : 'Break ended! Ready to focus again 📚', 'info');
+      setTimerMode('pomodoro');
+      const nextSec = timerFocusDuration * 60;
+      setTimerRemainingSeconds(nextSec);
+    }
+  }, [timerSoundEnabled, playCompletionChimeSound, timerMode, recordStudySession, timerSelectedSubjectId, timerFocusDuration, language, timerShortBreakDuration, showToast]);
+
+  // Persistent Drift-safe Timer tick with 15-second alarm
+  useEffect(() => {
+    if (timerIsRunning) {
+      if (!timerEndTimeRef.current) {
+        timerEndTimeRef.current = Date.now() + timerRemainingSeconds * 1000;
+      }
+
+      timerIntervalRef.current = window.setInterval(() => {
+        if (!timerEndTimeRef.current) return;
+        const now = Date.now();
+        const diff = Math.max(0, Math.round((timerEndTimeRef.current - now) / 1000));
+        setTimerRemainingSeconds(diff);
+
+        // Final 15-second alarm beep trigger
+        if (diff <= 15 && diff > 0) {
+          if (lastAlarmSecondRef.current !== diff) {
+            lastAlarmSecondRef.current = diff;
+            if (timerSoundEnabled) {
+              playWarningBeepSound();
+            }
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              try { navigator.vibrate(50); } catch { /* ignore */ }
+            }
+          }
+        }
+
+        if (diff <= 0) {
+          if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+          handleTimerComplete();
+        }
+      }, 500);
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      timerEndTimeRef.current = null;
+      lastAlarmSecondRef.current = null;
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [timerIsRunning, timerRemainingSeconds, timerSoundEnabled, playWarningBeepSound, handleTimerComplete]);
+
+  const startTimer = useCallback(() => {
+    timerEndTimeRef.current = Date.now() + timerRemainingSeconds * 1000;
+    setTimerIsRunning(true);
+  }, [timerRemainingSeconds]);
+
+  const pauseTimer = useCallback(() => {
+    setTimerIsRunning(false);
+    timerEndTimeRef.current = null;
+    lastAlarmSecondRef.current = null;
+  }, []);
+
+  const resetTimer = useCallback(() => {
+    setTimerIsRunning(false);
+    timerEndTimeRef.current = null;
+    lastAlarmSecondRef.current = null;
+    const target = getTargetSeconds(timerMode, timerFocusDuration, timerShortBreakDuration, timerLongBreakDuration);
+    setTimerRemainingSeconds(target);
+  }, [timerMode, timerFocusDuration, timerShortBreakDuration, timerLongBreakDuration, getTargetSeconds]);
+
+  const skipTimer = useCallback(() => {
+    setTimerIsRunning(false);
+    timerEndTimeRef.current = null;
+    lastAlarmSecondRef.current = null;
+    if (timerMode === 'pomodoro') {
+      setTimerMode('short_break');
+      setTimerRemainingSeconds(timerShortBreakDuration * 60);
+    } else {
+      setTimerMode('pomodoro');
+      setTimerRemainingSeconds(timerFocusDuration * 60);
+    }
+  }, [timerMode, timerShortBreakDuration, timerFocusDuration]);
+
+  const switchTimerMode = useCallback((newMode: TimerMode) => {
+    setTimerIsRunning(false);
+    timerEndTimeRef.current = null;
+    lastAlarmSecondRef.current = null;
+    setTimerMode(newMode);
+    const target = getTargetSeconds(newMode, timerFocusDuration, timerShortBreakDuration, timerLongBreakDuration);
+    setTimerRemainingSeconds(target);
+  }, [timerFocusDuration, timerShortBreakDuration, timerLongBreakDuration, getTargetSeconds]);
+
+  const setTimerDurations = useCallback((focus: number, shortB: number, longB: number) => {
+    setTimerFocusDuration(focus);
+    setTimerShortBreakDuration(shortB);
+    setTimerLongBreakDuration(longB);
+    localStorage.setItem('studymate_pomo_focus', String(focus));
+    localStorage.setItem('studymate_pomo_short', String(shortB));
+    localStorage.setItem('studymate_pomo_long', String(longB));
+    if (!timerIsRunning) {
+      const target = getTargetSeconds(timerMode, focus, shortB, longB);
+      setTimerRemainingSeconds(target);
+    }
+  }, [timerIsRunning, timerMode, getTargetSeconds]);
+
+  // --- NAVIGATION HISTORY & BACK BUTTON HANDLING ---
+  const setActiveTab = useCallback((tab: NavTab) => {
+    setActiveTabState(prev => {
+      if (prev !== tab) {
+        setTabHistory(h => [...h, tab]);
+        try {
+          window.history.pushState({ tab }, '');
+        } catch { /* ignore */ }
+      }
+      return tab;
+    });
+  }, []);
+
+  const registerModal = useCallback((id: string) => {
+    setOpenModals(prev => [...prev, id]);
+    try {
+      window.history.pushState({ modalId: id }, '');
+    } catch { /* ignore */ }
+    return () => {
+      setOpenModals(prev => prev.filter(m => m !== id));
+    };
+  }, []);
+
+  const isAnyModalOpen = openModals.length > 0;
+  const canGoBack = tabHistory.length > 1 || openModals.length > 0;
+
+  const goBack = useCallback(() => {
+    if (openModals.length > 0) {
+      setOpenModals(prev => prev.slice(0, -1));
+      return;
+    }
+    setTabHistory(prev => {
+      if (prev.length <= 1) {
+        setActiveTabState('dashboard');
+        return ['dashboard'];
+      }
+      const newHistory = [...prev];
+      newHistory.pop(); // remove current
+      const prevTab = newHistory[newHistory.length - 1] || 'dashboard';
+      setActiveTabState(prevTab);
+      return newHistory;
+    });
+  }, [openModals.length]);
+
+  // Intercept browser and mobile back gesture
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (openModals.length > 0) {
+        e.preventDefault?.();
+        setOpenModals(prev => prev.slice(0, -1));
+        return;
+      }
+      setTabHistory(prev => {
+        if (prev.length <= 1) {
+          setActiveTabState('dashboard');
+          return ['dashboard'];
+        }
+        const newHistory = [...prev];
+        newHistory.pop();
+        const prevTab = newHistory[newHistory.length - 1] || 'dashboard';
+        setActiveTabState(prevTab);
+        return newHistory;
+      });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [openModals.length]);
+
   return (
     <AppContext.Provider
       value={{
@@ -1081,6 +1396,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeTab,
         setActiveTab,
         t,
+        canGoBack,
+        goBack,
+        registerModal,
+        isAnyModalOpen,
+        timerMode,
+        timerRemainingSeconds,
+        timerIsRunning,
+        timerTargetSeconds,
+        timerSelectedSubjectId,
+        timerSoundEnabled,
+        timerFocusDuration,
+        timerShortBreakDuration,
+        timerLongBreakDuration,
+        isTimer15sWarning,
+        startTimer,
+        pauseTimer,
+        resetTimer,
+        skipTimer,
+        switchTimerMode,
+        setTimerSelectedSubjectId,
+        setTimerSoundEnabled,
+        setTimerDurations,
         isDemoMode,
         setIsDemoMode,
         supabaseConfig,

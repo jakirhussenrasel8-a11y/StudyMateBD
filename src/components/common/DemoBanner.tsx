@@ -12,27 +12,27 @@ export const DemoBanner: React.FC<DemoBannerProps> = ({ onOpenAuth, onOpenSettin
 
   if (!isDemoMode && user) {
     return (
-      <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800/50 px-4 py-2 text-xs flex items-center justify-between text-emerald-800 dark:text-emerald-300">
+      <div className="bg-[#E6F4F1] dark:bg-pastelMint-500/15 border-b border-pastelMint-200 dark:border-pastelMint-500/30 px-4 py-2 text-xs flex items-center justify-between text-charcoal-900 dark:text-pastelMint-100">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="font-semibold">{t.auth.cloudConnected}</span>
-          <span className="text-emerald-600/80 dark:text-emerald-400/80 hidden sm:inline">
+          <ShieldCheck className="w-4 h-4 text-pastelMint-500 dark:text-pastelMint-300" />
+          <span className="font-extrabold">{t.auth.cloudConnected}</span>
+          <span className="text-charcoal-500 dark:text-pastelMint-200 hidden sm:inline">
             ({user.email})
           </span>
         </div>
-        <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded font-medium">
-          PostgreSQL Cloud Sync
+        <span className="text-[11px] bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-pastelMint-200 px-2.5 py-0.5 rounded-full font-bold border border-pastelMint-200">
+          Supabase PostgreSQL
         </span>
       </div>
     );
   }
 
   return (
-    <div className="bg-rose-50/70 dark:bg-slate-900/90 border-b border-rose-200/70 dark:border-rose-950/40 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 text-rose-950 dark:text-rose-200">
+    <div className="bg-[#FFF9E5] dark:bg-charcoal-900/90 border-b border-[#FFE49A]/80 dark:border-charcoal-800 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 text-charcoal-900 dark:text-amber-200">
       <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-        <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
         <p className="line-clamp-1">
-          <strong className="font-semibold text-rose-700 dark:text-rose-300">{t.auth.demoActive}:</strong> {t.auth.demoNotice}
+          <strong className="font-black text-charcoal-900 dark:text-amber-300">{t.auth.demoActive}:</strong> {t.auth.demoNotice}
         </p>
       </div>
 
@@ -40,7 +40,7 @@ export const DemoBanner: React.FC<DemoBannerProps> = ({ onOpenAuth, onOpenSettin
         {supabaseConfig.isConfigured ? (
           <button
             onClick={onOpenAuth}
-            className="flex items-center gap-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-2.5 py-1 rounded-md text-xs font-bold transition shadow-xs cursor-pointer"
+            className="flex items-center gap-1 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-3 py-1 rounded-full text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
           >
             {t.auth.login}
             <ChevronRight className="w-3 h-3" />
@@ -48,7 +48,7 @@ export const DemoBanner: React.FC<DemoBannerProps> = ({ onOpenAuth, onOpenSettin
         ) : (
           <button
             onClick={onOpenSettings}
-            className="flex items-center gap-1.5 bg-rose-900/90 hover:bg-rose-950 text-white dark:bg-rose-500 dark:hover:bg-rose-600 dark:text-white px-2.5 py-1 rounded-md text-xs font-medium transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-lavender-400 hover:bg-lavender-500 text-charcoal-900 px-3 py-1 rounded-full text-xs font-black transition cursor-pointer shadow-xs active:scale-95"
           >
             <Database className="w-3.5 h-3.5" />
             <span>Connect Supabase Free</span>

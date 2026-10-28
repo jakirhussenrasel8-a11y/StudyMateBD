@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Task, Priority, TaskStatus } from '../../types';
 import { 
@@ -13,7 +13,8 @@ import {
   Edit2, 
   Trash2, 
   X,
-  ArrowUpDown 
+  ArrowUpDown,
+  ArrowLeft 
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 
@@ -29,7 +30,10 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
     updateTask, 
     deleteTask, 
     toggleTaskCompletion, 
-    t 
+    t,
+    goBack,
+    canGoBack,
+    registerModal 
   } = useApp();
 
   const todayStr = getTodayDateString();
@@ -45,6 +49,20 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteConfirmTask, setDeleteConfirmTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const unregister = registerModal('task-modal');
+      return unregister;
+    }
+  }, [isModalOpen, registerModal]);
+
+  useEffect(() => {
+    if (deleteConfirmTask) {
+      const unregister = registerModal('delete-task-modal');
+      return unregister;
+    }
+  }, [deleteConfirmTask, registerModal]);
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -198,49 +216,59 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
   }, [tasks, searchQuery, selectedSubjectId, selectedPriority, statusFilter, sortBy, todayStr]);
 
   const priorityLabels = {
-    high: { text: t.tasks.priorityHigh, color: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' },
-    medium: { text: t.tasks.priorityMedium, color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' },
-    low: { text: t.tasks.priorityLow, color: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300' },
+    high: { text: t.tasks.priorityHigh, color: 'bg-[#FFE49A] text-charcoal-900 border border-[#FFE49A]' },
+    medium: { text: t.tasks.priorityMedium, color: 'bg-lavender-100 text-charcoal-900 dark:bg-charcoal-800 dark:text-lavender-200 border border-lavender-200' },
+    low: { text: t.tasks.priorityLow, color: 'bg-[#E6F4F1] text-charcoal-900 dark:bg-charcoal-800 dark:text-pastelMint-200 border border-pastelMint-200' },
   };
 
   return (
-    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in">
-      {/* Header and Add Button */}
+    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in max-w-5xl mx-auto">
+      {/* Header and Add Button with Back button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-            {t.tasks.title}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {t.tasks.subtitle}
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goBack}
+            className="w-10 h-10 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95 shrink-0"
+            title="পূর্ববর্তী পৃষ্ঠায় ফিরে যান"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-charcoal-900 dark:text-white" />
+          </button>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
+              {t.tasks.title}
+            </h2>
+            <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-0.5">
+              {t.tasks.subtitle}
+            </p>
+          </div>
         </div>
 
         <button
           onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 transition cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
           <span>{t.tasks.addTask}</span>
         </button>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-rose-100/80 dark:border-slate-800 shadow-2xs space-y-3">
+      {/* Filter and Search Bar with Pastel Styling */}
+      <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-3.5">
         {/* Search Input */}
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-charcoal-400 absolute left-3.5 top-3.5" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.tasks.searchPlaceholder}
-            className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+            className="w-full pl-10 pr-4 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
           />
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
           {[
             { id: 'all', label: t.tasks.filterAll },
             { id: 'today', label: t.tasks.filterToday },
@@ -253,10 +281,10 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
               <button
                 key={id}
                 onClick={() => setStatusFilter(id as any)}
-                className={`px-3 py-1.5 rounded-lg font-bold shrink-0 transition cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-full font-black shrink-0 transition cursor-pointer ${
                   isActive
-                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 shadow-xs'
+                    : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-lavender-200'
                 }`}
               >
                 {label}

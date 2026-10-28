@@ -2,22 +2,41 @@
 @config "../tailwind.config.js";
 
 @theme {
-  --color-primary-50: #fff1f2;
-  --color-primary-100: #ffe4e6;
-  --color-primary-200: #fecdd3;
-  --color-primary-300: #fda4af;
-  --color-primary-400: #fb7185;
-  --color-primary-500: #f43f5e;
-  --color-primary-600: #e11d48;
-  --color-primary-700: #be123c;
-  --color-primary-800: #9f1239;
-  --color-primary-900: #881337;
-  --color-primary-950: #4c0519;
+  --color-lavender-50: #FBF9FD;
+  --color-lavender-100: #F2EDF8;
+  --color-lavender-200: #E4D8F1;
+  --color-lavender-300: #D4C0E9;
+  --color-lavender-400: #C5A7E2;
+  --color-lavender-500: #A67FCF;
+  --color-lavender-600: #8B5EB8;
+  --color-lavender-700: #70479A;
 
-  --color-brand-soft: #fff1f2;
-  --color-brand-pink: #fb7185;
-  --color-brand-rose: #f43f5e;
+  --color-pastelMint-100: #E6F4F1;
+  --color-pastelMint-200: #CFE4E0;
+  --color-pastelMint-300: #A8D2C9;
+  --color-pastelMint-500: #5BA497;
+
+  --color-pastelYellow-100: #FFF9E5;
+  --color-pastelYellow-200: #FFE49A;
+  --color-pastelYellow-300: #FFD366;
+
+  --color-pastelBlue-100: #E4F1FD;
+  --color-pastelBlue-200: #C0DFFB;
+  --color-pastelBlue-300: #80B9F0;
+
+  --color-charcoal-900: #1D222B;
+  --color-charcoal-500: #62646D;
+
+  --color-primary-50: #FBF9FD;
+  --color-primary-100: #F2EDF8;
+  --color-primary-200: #E4D8F1;
+  --color-primary-300: #D4C0E9;
+  --color-primary-400: #C5A7E2;
+  --color-primary-500: #A67FCF;
+  --color-primary-600: #8B5EB8;
+  --color-primary-700: #70479A;
 }
+
 @layer base {
   :root {
     --font-bengali: 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -26,6 +45,13 @@
   body {
     font-family: var(--font-bengali);
     -webkit-tap-highlight-color: transparent;
+    background-color: #F8F7FA;
+    color: #1D222B;
+  }
+
+  .dark body {
+    background-color: #0E0D12;
+    color: #F1F1F5;
   }
 
   /* Safe area handling for mobile navigation */
@@ -34,7 +60,28 @@
   }
 }
 
-/* Custom scrollbar for desktop views */
+/* Subtle striped pill background matching reference design */
+.striped-pill {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.4),
+    rgba(255, 255, 255, 0.4) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+.dark .striped-pill {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.08) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -43,9 +90,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(197, 167, 226, 0.35);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(197, 167, 226, 0.6);
 }

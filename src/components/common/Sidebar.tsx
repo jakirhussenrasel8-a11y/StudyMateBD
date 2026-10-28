@@ -10,7 +10,8 @@ import {
   Timer, 
   BarChart3, 
   Settings,
-  Database
+  Database,
+  BellRing
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -21,12 +22,20 @@ export const Sidebar: React.FC = () => {
     pendingTasksCount, 
     exams,
     isDemoMode,
-    supabaseConfig 
+    timerIsRunning,
+    timerRemainingSeconds,
+    isTimer15sWarning
   } = useApp();
 
   // Count upcoming exams
   const todayStr = new Date().toISOString().split('T')[0];
   const upcomingExamsCount = exams.filter(e => e.exam_date >= todayStr).length;
+
+  const formatTimerMinSec = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
 
   const navItems: { id: NavTab; label: string; icon: React.ElementType; badge?: number | string; badgeColor?: string }[] = [
     { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
@@ -44,18 +53,24 @@ export const Sidebar: React.FC = () => {
       label: t.nav.exams, 
       icon: Award,
       badge: upcomingExamsCount > 0 ? upcomingExamsCount : undefined,
-      badgeColor: 'bg-indigo-500 text-white'
+      badgeColor: 'bg-lavender-500 text-white'
     },
-    { id: 'timer', label: t.nav.timer, icon: Timer },
+    { 
+      id: 'timer', 
+      label: t.nav.timer, 
+      icon: Timer,
+      badge: timerIsRunning ? formatTimerMinSec(timerRemainingSeconds) : undefined,
+      badgeColor: isTimer15sWarning ? 'bg-amber-500 text-white animate-pulse' : 'bg-lavender-400 text-charcoal-900 font-mono'
+    },
     { id: 'analytics', label: t.nav.analytics, icon: BarChart3 },
     { id: 'settings', label: t.nav.settings, icon: Settings },
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-rose-100 dark:border-slate-800 bg-white dark:bg-slate-900 min-h-[calc(100vh-3.5rem)] p-4 shrink-0">
-      <div className="space-y-1 flex-1">
-        <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-400 dark:text-rose-500/80">
-          Navigation
+    <aside className="hidden md:flex flex-col w-64 border-r border-[#E8E5ED] dark:border-charcoal-800 bg-white dark:bg-charcoal-900 min-h-[calc(100vh-4rem)] p-4 shrink-0 transition-colors">
+      <div className="space-y-1.5 flex-1">
+        <div className="px-3 py-2 text-[11px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-500">
+          মেনু ও নেভিগেশন
         </div>
         {navItems.map(({ id, label, icon: Icon, badge, badgeColor }) => {
           const isActive = activeTab === id;
@@ -63,18 +78,20 @@ export const Sidebar: React.FC = () => {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-sm font-bold transition cursor-pointer select-none active:scale-98 ${
                 isActive
-                  ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-rose-500 text-white shadow-sm shadow-rose-500/20 font-bold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-rose-50/60 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60'
+                  ? 'bg-[#F2EDF8] text-charcoal-900 dark:bg-charcoal-800 dark:text-lavender-300 font-black border border-lavender-200/80 dark:border-charcoal-700 shadow-xs'
+                  : 'text-charcoal-600 hover:text-charcoal-900 hover:bg-[#F8F7FA] dark:text-slate-300 dark:hover:text-white dark:hover:bg-charcoal-800/60'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                <div className={`p-1.5 rounded-xl ${isActive ? 'bg-lavender-400 text-charcoal-900' : 'text-charcoal-500 dark:text-slate-400'}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
                 <span>{label}</span>
               </div>
               {badge !== undefined && (
-                <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${isActive ? 'bg-white/20 text-white' : (badgeColor || 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300')}`}>
+                <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold shadow-xs ${badgeColor || 'bg-slate-200 dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300'}`}>
                   {badge}
                 </span>
               )}
@@ -84,23 +101,23 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Quick Database Status in Sidebar Footer */}
-      <div className="mt-auto pt-4 border-t border-rose-100 dark:border-slate-800">
-        <div className="p-3 rounded-xl bg-rose-50/40 dark:bg-slate-800/50 border border-rose-100 dark:border-slate-700/60 text-xs">
-          <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-700 dark:text-slate-300">
-            <Database className="w-3.5 h-3.5 text-rose-500" />
-            <span>Database Status</span>
+      <div className="mt-auto pt-4 border-t border-[#E8E5ED] dark:border-charcoal-800">
+        <div className="p-3.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70 border border-[#E8E5ED] dark:border-charcoal-700/60 text-xs">
+          <div className="flex items-center gap-2 mb-1.5 font-black text-charcoal-900 dark:text-slate-200">
+            <Database className="w-3.5 h-3.5 text-lavender-500" />
+            <span>ডাটাবেজ স্ট্যাটাস</span>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+          <p className="text-charcoal-500 dark:text-slate-400 text-[11px] leading-relaxed">
             {isDemoMode 
-              ? 'Local demo mode is active. Data is stored on your device.' 
-              : 'Connected to Supabase PostgreSQL.'}
+              ? 'লোকাল ডেমো মোড সক্রিয়। ডাটা ডিভাইসে সুরক্ষিত আছে।' 
+              : 'Supabase PostgreSQL ক্লাউডে সংযুক্ত।'}
           </p>
           {isDemoMode && (
             <button
               onClick={() => setActiveTab('settings')}
-              className="mt-2 w-full text-center text-[11px] text-rose-600 dark:text-rose-400 font-bold hover:underline cursor-pointer"
+              className="mt-2 text-[11px] text-lavender-700 dark:text-lavender-300 font-extrabold hover:underline cursor-pointer flex items-center gap-1"
             >
-              Setup Supabase Cloud &rarr;
+              ক্লাউড সিঙ্ক সেটআপ করুন &rarr;
             </button>
           )}
         </div>

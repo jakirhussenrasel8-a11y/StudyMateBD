@@ -108,32 +108,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenSet
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-rose-100/60 dark:border-slate-800 overflow-hidden relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
+        className="w-full max-w-md bg-white dark:bg-charcoal-900 rounded-t-[32px] sm:rounded-3xl shadow-2xl border border-[#E8E5ED] dark:border-charcoal-800 overflow-hidden relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Mobile Sheet Drag Handle */}
-        <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+        <div className="w-12 h-1.5 bg-[#E8E5ED] dark:bg-charcoal-700 rounded-full mx-auto my-3 sm:hidden shrink-0" />
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer active:scale-90"
+          className="absolute top-4 right-4 p-1.5 rounded-full text-charcoal-400 hover:text-charcoal-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-charcoal-800 transition cursor-pointer active:scale-90"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="p-5 pb-3 text-center border-b border-slate-100 dark:border-slate-800/80 bg-gradient-to-b from-rose-50/60 to-transparent dark:from-rose-950/20 shrink-0">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 mx-auto flex items-center justify-center text-white shadow-lg shadow-rose-500/25 mb-2.5">
-            <GraduationCap className="w-6 h-6" />
+        <div className="p-6 pb-4 text-center border-b border-[#E8E5ED] dark:border-charcoal-800/80 bg-gradient-to-b from-lavender-50 to-transparent dark:from-charcoal-800/40 shrink-0">
+          <div className="w-13 h-13 rounded-2xl bg-lavender-400 mx-auto flex items-center justify-center text-charcoal-900 shadow-xs mb-3 font-bold">
+            <GraduationCap className="w-7 h-7" />
           </div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-black text-charcoal-900 dark:text-white">
             {authTab === 'login' && t.auth.login}
             {authTab === 'signup' && t.auth.signup}
             {authTab === 'forgot' && t.auth.forgotPassword}
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+          <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
             {authTab === 'login' && 'আপনার ক্লাউড অ্যাকাউন্টে প্রবেশ করে সব ডিভাইস থেকে পড়ার ডেটা সিঙ্ক করুন'}
             {authTab === 'signup' && 'বিনামূল্যে অ্যাকাউন্ট খুলে সব ডেটা নিরাপদে ক্লাউডে সংরক্ষণ করুন'}
             {authTab === 'forgot' && 'আপনার ইমেইল দিন, আমরা পাসওয়ার্ড রিসেট লিংক পাঠাব'}
@@ -247,7 +247,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenSet
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-extrabold text-sm shadow-md shadow-rose-500/25 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 min-h-[46px] active:scale-98"
+              className="w-full py-3.5 px-4 rounded-full bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 font-black text-sm shadow-md transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 min-h-[46px] active:scale-98"
             >
               {isSubmitting ? (
                 <span>{t.common.loading}</span>

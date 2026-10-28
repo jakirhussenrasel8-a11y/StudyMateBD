@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Settings, 
@@ -18,7 +18,8 @@ import {
   Code2, 
   HelpCircle,
   ChevronDown,
-  ChevronUp 
+  ChevronUp,
+  ArrowLeft 
 } from 'lucide-react';
 import { 
   saveUserSupabaseConfig, 
@@ -41,7 +42,9 @@ export const SettingsView: React.FC = () => {
     importDataFromJson, 
     resetDemoData, 
     showToast, 
-    t 
+    t,
+    goBack,
+    registerModal 
   } = useApp();
 
   // Custom Supabase inputs for mobile users
@@ -56,6 +59,13 @@ export const SettingsView: React.FC = () => {
 
   // Reset confirmation modal
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  useEffect(() => {
+    if (showResetConfirm) {
+      const unregister = registerModal('reset-confirm-modal');
+      return unregister;
+    }
+  }, [showResetConfirm, registerModal]);
 
   // File import ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -215,14 +225,24 @@ CREATE POLICY "user_sessions_policy" ON public.study_sessions FOR ALL USING (aut
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto pb-24 md:pb-8 animate-in fade-in">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-          {t.settings.title}
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          {t.settings.subtitle}
-        </p>
+      {/* Header with Back button */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={goBack}
+          className="w-10 h-10 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95 shrink-0"
+          title="পূর্ববর্তী পৃষ্ঠায় ফিরে যান"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-5 h-5 text-charcoal-900 dark:text-white" />
+        </button>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
+            {t.settings.title}
+          </h2>
+          <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-0.5">
+            {t.settings.subtitle}
+          </p>
+        </div>
       </div>
 
       {/* 1. Language & Appearance */}

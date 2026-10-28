@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StudyRoutine, DayOfWeek } from '../../types';
 import { 
@@ -9,7 +9,8 @@ import {
   Edit2, 
   Trash2, 
   X, 
-  BookOpen 
+  BookOpen,
+  ArrowLeft 
 } from 'lucide-react';
 
 interface RoutineViewProps {
@@ -23,7 +24,10 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
     addRoutine, 
     updateRoutine, 
     deleteRoutine, 
-    t 
+    t,
+    goBack,
+    canGoBack,
+    registerModal 
   } = useApp();
 
   // Selected Day Filter (0 = Saturday, 1 = Sunday ... 6 = Friday)
@@ -39,6 +43,20 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<StudyRoutine | null>(null);
   const [deleteConfirmRoutine, setDeleteConfirmRoutine] = useState<StudyRoutine | null>(null);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const unregister = registerModal('routine-modal');
+      return unregister;
+    }
+  }, [isModalOpen, registerModal]);
+
+  useEffect(() => {
+    if (deleteConfirmRoutine) {
+      const unregister = registerModal('delete-routine-modal');
+      return unregister;
+    }
+  }, [deleteConfirmRoutine, registerModal]);
 
   // Form Fields
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>(activeDay);
@@ -190,21 +208,31 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
   }, [routines, activeDay]);
 
   return (
-    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in">
-      {/* Header and Add Button */}
+    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in max-w-5xl mx-auto">
+      {/* Header and Add Button with Back button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-            {t.routine.title}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {t.routine.subtitle}
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goBack}
+            className="w-10 h-10 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95 shrink-0"
+            title="পূর্ববর্তী পৃষ্ঠায় ফিরে যান"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-charcoal-900 dark:text-white" />
+          </button>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
+              {t.routine.title}
+            </h2>
+            <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-0.5">
+              {t.routine.subtitle}
+            </p>
+          </div>
         </div>
 
         <button
           onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 transition cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
           <span>{t.routine.addSession}</span>
@@ -212,8 +240,8 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
       </div>
 
       {/* Weekday Switcher Bar (Bangladeshi 7 days) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-2 border border-slate-200 dark:border-slate-800 shadow-2xs">
-        <div className="grid grid-cols-7 gap-1">
+      <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-2.5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {t.routine.shortDayNames.map((dayName, idx) => {
             const isSelected = activeDay === idx;
             const slotCount = routines.filter(r => r.day_of_week === idx).length;
@@ -223,17 +251,17 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
               <button
                 key={idx}
                 onClick={() => setActiveDay(idx as DayOfWeek)}
-                className={`flex flex-col items-center justify-center py-2.5 sm:py-3 rounded-xl transition cursor-pointer ${
+                className={`flex flex-col items-center justify-center py-2.5 sm:py-3 rounded-2xl transition cursor-pointer select-none active:scale-95 ${
                   isSelected
-                    ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold shadow-sm'
-                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 font-black shadow-xs'
+                    : 'hover:bg-[#F2EDF8] dark:hover:bg-charcoal-800 text-charcoal-700 dark:text-slate-300'
                 }`}
               >
-                <span className="text-xs sm:text-sm font-semibold">{dayName}</span>
+                <span className="text-xs sm:text-sm font-extrabold">{dayName}</span>
                 <div className="flex items-center gap-1 mt-1">
                   {slotCount > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isSelected ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      isSelected ? 'bg-lavender-400 text-charcoal-900' : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-600 dark:text-slate-400'
                     }`}>
                       {slotCount}
                     </span>

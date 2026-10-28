@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Subject } from '../../types';
 import { 
@@ -10,18 +10,19 @@ import {
   CheckSquare, 
   Clock, 
   X,
-  Palette 
+  Palette,
+  ArrowLeft 
 } from 'lucide-react';
 
 const PRESET_COLORS = [
+  '#C5A7E2', // lavender
+  '#CFE4E0', // mint
+  '#FFE49A', // soft yellow
+  '#80B9F0', // sky blue
   '#10b981', // emerald
-  '#3b82f6', // blue
-  '#8b5cf6', // purple
   '#f59e0b', // amber
   '#ef4444', // red
-  '#06b6d4', // cyan
-  '#ec4899', // pink
-  '#14b8a6', // teal
+  '#8b5cf6', // purple
 ];
 
 interface SubjectsViewProps {
@@ -36,12 +37,29 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
     addSubject, 
     updateSubject, 
     deleteSubject, 
-    t 
+    t,
+    goBack,
+    canGoBack,
+    registerModal 
   } = useApp();
 
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [deleteConfirmSubject, setDeleteConfirmSubject] = useState<Subject | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const unregister = registerModal('subject-modal');
+      return unregister;
+    }
+  }, [isModalOpen, registerModal]);
+
+  useEffect(() => {
+    if (deleteConfirmSubject) {
+      const unregister = registerModal('delete-subject-modal');
+      return unregister;
+    }
+  }, [deleteConfirmSubject, registerModal]);
 
   // Form State
   const [name, setName] = useState('');
@@ -126,21 +144,31 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ onOpenCreate }) => {
   };
 
   return (
-    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in">
-      {/* Top Header */}
+    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in max-w-5xl mx-auto">
+      {/* Top Header with Back button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-            {t.subjects.title}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {t.subjects.subtitle}
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goBack}
+            className="w-10 h-10 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95 shrink-0"
+            title="পূর্ববর্তী পৃষ্ঠায় ফিরে যান"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-charcoal-900 dark:text-white" />
+          </button>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
+              {t.subjects.title}
+            </h2>
+            <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-0.5">
+              {t.subjects.subtitle}
+            </p>
+          </div>
         </div>
 
         <button
           onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 transition cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
           <span>{t.subjects.addSubject}</span>

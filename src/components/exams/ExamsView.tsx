@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Exam } from '../../types';
 import { 
@@ -11,7 +11,8 @@ import {
   Trash2, 
   X, 
   CheckCircle, 
-  AlertCircle 
+  AlertCircle,
+  ArrowLeft 
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 
@@ -26,7 +27,10 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onOpenCreate }) => {
     addExam, 
     updateExam, 
     deleteExam, 
-    t 
+    t,
+    goBack,
+    canGoBack,
+    registerModal 
   } = useApp();
 
   const todayStr = getTodayDateString();
@@ -35,6 +39,20 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onOpenCreate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [deleteConfirmExam, setDeleteConfirmExam] = useState<Exam | null>(null);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      const unregister = registerModal('exam-modal');
+      return unregister;
+    }
+  }, [isModalOpen, registerModal]);
+
+  useEffect(() => {
+    if (deleteConfirmExam) {
+      const unregister = registerModal('delete-exam-modal');
+      return unregister;
+    }
+  }, [deleteConfirmExam, registerModal]);
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -166,21 +184,31 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onOpenCreate }) => {
   }, [exams, todayStr]);
 
   return (
-    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in">
-      {/* Header and Add Button */}
+    <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in max-w-5xl mx-auto">
+      {/* Header and Add Button with Back Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
-            {t.exams.title}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {t.exams.subtitle}
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goBack}
+            className="w-10 h-10 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95 shrink-0"
+            title="পূর্ববর্তী পৃষ্ঠায় ফিরে যান"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5 text-charcoal-900 dark:text-white" />
+          </button>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
+              {t.exams.title}
+            </h2>
+            <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-0.5">
+              {t.exams.subtitle}
+            </p>
+          </div>
         </div>
 
         <button
           onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-rose-500/20 transition cursor-pointer"
+          className="self-start sm:self-auto flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
           <span>{t.exams.addExam}</span>

@@ -10,9 +10,11 @@ import {
   Trash2, 
   X, 
   BookOpen,
-  ArrowLeft 
+  ArrowLeft,
+  Printer 
 } from 'lucide-react';
 import { formatTime12h } from '../../lib/timeFormat';
+import { ExportPdfModal } from '../export/ExportPdfModal';
 
 interface RoutineViewProps {
   onOpenCreate: () => void;
@@ -42,6 +44,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<StudyRoutine | null>(null);
   const [deleteConfirmRoutine, setDeleteConfirmRoutine] = useState<StudyRoutine | null>(null);
 
@@ -231,13 +234,23 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
           </div>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="self-start sm:self-auto flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t.routine.addSession}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center gap-1.5 bg-[#F2EDF8] hover:bg-lavender-200 text-charcoal-900 dark:bg-charcoal-800 dark:text-white dark:hover:bg-charcoal-700 px-4 py-2.5 rounded-full font-bold text-xs sm:text-sm border border-[#E8E5ED] dark:border-charcoal-700 shadow-xs transition cursor-pointer active:scale-95"
+            title="রুটিন ও টাস্ক শিডিউল প্রিন্ট বা PDF ডাউনলোড করুন"
+          >
+            <Printer className="w-4 h-4 text-purple-700 dark:text-purple-400" />
+            <span>প্রিন্ট / PDF এক্সপোর্ট</span>
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t.routine.addSession}</span>
+          </button>
+        </div>
       </div>
 
       {/* Weekday Switcher Bar (Bangladeshi 7 days) */}
@@ -562,6 +575,14 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
           </div>
         </div>
       )}
+
+      {/* Export / Print PDF Modal */}
+      <ExportPdfModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        initialIncludeRoutine={true}
+        initialIncludeTasks={true}
+      />
     </div>
   );
 };

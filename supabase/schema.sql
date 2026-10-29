@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT,
   student_class TEXT,
   institution TEXT,
+  gender TEXT DEFAULT 'male' CHECK (gender IN ('male', 'female')),
   target_study_hours_per_day NUMERIC DEFAULT 4.0 CHECK (target_study_hours_per_day >= 0 AND target_study_hours_per_day <= 24),
   preferred_language TEXT DEFAULT 'bn' CHECK (preferred_language IN ('bn', 'en')),
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,

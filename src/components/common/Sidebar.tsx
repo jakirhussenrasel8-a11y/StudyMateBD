@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { NavTab } from '../../types';
 import { 
@@ -12,8 +12,10 @@ import {
   Settings,
   Database,
   BellRing,
-  Users
+  Users,
+  Printer
 } from 'lucide-react';
+import { ExportPdfModal } from '../export/ExportPdfModal';
 
 export const Sidebar: React.FC = () => {
   const { 
@@ -28,6 +30,8 @@ export const Sidebar: React.FC = () => {
     timerRemainingSeconds,
     isTimer15sWarning
   } = useApp();
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Count upcoming exams
   const todayStr = new Date().toISOString().split('T')[0];
@@ -109,8 +113,20 @@ export const Sidebar: React.FC = () => {
         })}
       </div>
 
+      {/* Quick Print & Export PDF action in Sidebar */}
+      <div className="pt-3">
+        <button
+          onClick={() => setIsExportModalOpen(true)}
+          className="w-full flex items-center justify-center gap-2 p-3 rounded-2xl bg-[#F2EDF8] hover:bg-lavender-200 dark:bg-charcoal-800 dark:hover:bg-charcoal-700 text-charcoal-900 dark:text-white border border-[#E8E5ED] dark:border-charcoal-700 font-bold text-xs shadow-xs transition cursor-pointer active:scale-95"
+          title="সাপ্তাহিক রুটিন ও টাস্ক শিডিউল PDF ডাউনলোড ও প্রিন্ট করুন"
+        >
+          <Printer className="w-4 h-4 text-purple-700 dark:text-purple-400" />
+          <span>রুটিন ও টাস্ক প্রিন্ট / PDF</span>
+        </button>
+      </div>
+
       {/* Quick Database Status in Sidebar Footer */}
-      <div className="mt-auto pt-4 border-t border-[#E8E5ED] dark:border-charcoal-800">
+      <div className="mt-auto pt-3 border-t border-[#E8E5ED] dark:border-charcoal-800">
         <div className="p-3.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70 border border-[#E8E5ED] dark:border-charcoal-700/60 text-xs">
           <div className="flex items-center gap-2 mb-1.5 font-black text-charcoal-900 dark:text-slate-200">
             <Database className="w-3.5 h-3.5 text-lavender-500" />
@@ -131,6 +147,14 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Export / Print PDF Modal */}
+      <ExportPdfModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        initialIncludeRoutine={true}
+        initialIncludeTasks={true}
+      />
     </aside>
   );
 };

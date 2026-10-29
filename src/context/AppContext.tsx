@@ -386,9 +386,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSessions(sessRes.data || []);
         
         if (profRes.data) {
-          setProfile(profRes.data);
+          const cachedGender = (() => {
+            try {
+              const cached = localStorage.getItem('studymate_cached_profile');
+              if (cached) return JSON.parse(cached)?.gender;
+            } catch {}
+            return user?.user_metadata?.gender || 'male';
+          })();
+          const mergedProf: Profile = {
+            ...profRes.data,
+            gender: profRes.data.gender || cachedGender || 'male',
+          };
+          setProfile(mergedProf);
           try {
-            localStorage.setItem('studymate_cached_profile', JSON.stringify(profRes.data));
+            localStorage.setItem('studymate_cached_profile', JSON.stringify(mergedProf));
           } catch {}
         } else if (user) {
           // If no profile row exists yet, initialize it
@@ -1071,21 +1082,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode && user && client) {
       try {
+        // Only send columns that exist in the profiles database schema
+        const profilePayload: Record<string, any> = {
+          id: user.id,
+          email: user.email || '',
+          full_name: updatedProfileObj.full_name,
+          student_class: updatedProfileObj.student_class,
+          institution: updatedProfileObj.institution,
+          target_study_hours_per_day: updatedProfileObj.target_study_hours_per_day,
+          preferred_language: updatedProfileObj.preferred_language,
+          updated_at: new Date().toISOString(),
+        };
+
         const { error } = await client
           .from('profiles')
-          .upsert({
-            id: user.id,
-            email: user.email || '',
-            full_name: updatedProfileObj.full_name,
-            student_class: updatedProfileObj.student_class,
-            institution: updatedProfileObj.institution,
-            gender: updatedProfileObj.gender,
-            target_study_hours_per_day: updatedProfileObj.target_study_hours_per_day,
-            preferred_language: updatedProfileObj.preferred_language,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'id' });
+          .upsert(profilePayload, { onConflict: 'id' });
 
         if (error) throw error;
+
+        // Persist gender into auth metadata if available
+        if (updatedProfileObj.gender) {
+          client.auth.updateUser({
+            data: { gender: updatedProfileObj.gender }
+          }).catch(() => {});
+        }
+
         showToast('শিক্ষার্থীর তথ্য সুপাবেজে সংরক্ষিত হয়েছে!', 'success');
         return true;
       } catch (err: unknown) {
@@ -1110,7 +1131,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const { data, error } = await client
           .from('profiles')
-          .select('full_name, student_class, institution, gender')
+          .select('full_name, student_class, institution')
           .eq('email', cleanEmail)
           .maybeSingle();
         if (data && !error) {
@@ -1118,7 +1139,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             name: data.full_name || undefined,
             student_class: data.student_class || undefined,
             institution: data.institution || undefined,
-            gender: data.gender === 'female' ? 'female' : 'male',
+            gender: 'male',
           };
         }
       } catch (e) {

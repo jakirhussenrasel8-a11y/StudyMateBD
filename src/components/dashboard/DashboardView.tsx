@@ -24,12 +24,14 @@ import {
   Search,
   Bell,
   Star,
-  Users
+  Users,
+  Printer
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 import { getSixPeriodGreeting, formatTime12h } from '../../lib/timeFormat';
 import { StudentAvatar } from '../common/StudentAvatar';
 import { useDailyBengaliQuote } from '../../hooks/useDailyBengaliQuote';
+import { ExportPdfModal } from '../export/ExportPdfModal';
 
 interface DashboardViewProps {
   onOpenCreateTask: () => void;
@@ -75,6 +77,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Profile Edit Modal State - Exact Demo defaults
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [studentName, setStudentName] = useState(profile?.full_name || 'Rasu IT');
   const [studentClass, setStudentClass] = useState(profile?.student_class || "Hon's 3rd Year");
   const [institution, setInstitution] = useState(profile?.institution || 'Maulvibazar Govt. College');
@@ -311,8 +314,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
 
-        {/* Quick Focus Button */}
+        {/* Quick Focus Button and Export PDF button */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white dark:bg-charcoal-800 hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 text-charcoal-900 dark:text-white font-bold text-xs sm:text-sm border border-[#E8E5ED] dark:border-charcoal-700 shadow-xs transition cursor-pointer active:scale-95"
+            title="পড়ার রুটিন ও টাস্ক শিডিউল প্রিন্ট বা PDF ডাউনলোড করুন"
+          >
+            <Printer className="w-4 h-4 text-purple-700 dark:text-purple-400" />
+            <span>প্রিন্ট / PDF</span>
+          </button>
           <button
             onClick={() => setActiveTab('timer')}
             className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 font-black text-xs sm:text-sm shadow-md transition cursor-pointer active:scale-95"
@@ -978,6 +989,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Export / Print PDF Modal */}
+      <ExportPdfModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        initialIncludeRoutine={true}
+        initialIncludeTasks={true}
+      />
     </div>
   );
 };

@@ -1,22 +1,16 @@
 import { Subject, Task, StudyRoutine, Exam, StudySession, BackupData, Profile } from '../types';
+import { getDhakaDateString } from './dateUtils';
 
 const DEMO_STORAGE_KEY = 'studymate_demo_data_v1';
 
 export function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getDhakaDateString();
 }
 
 export function getDateOffset(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getDhakaDateString(d);
 }
 
 /**
@@ -84,9 +78,9 @@ export function generateInitialDemoData() {
   const profile: Profile = {
     id: demoUserId,
     email: 'student@example.com',
-    full_name: 'তানভীর আহমেদ',
-    student_class: 'একাদশ শ্রেণি (HSC 2026)',
-    institution: 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
+    full_name: 'Rasu IT',
+    student_class: "Hon's 3rd Year",
+    institution: 'Maulvibazar Govt. College',
     gender: 'male',
     target_study_hours_per_day: 5,
     preferred_language: 'bn',
@@ -121,13 +115,18 @@ export function loadDemoDataFromStorage() {
       parsed.profile = {
         id: 'demo-user-student-bd',
         email: 'student@example.com',
-        full_name: 'তানভীর আহমেদ',
-        student_class: 'একাদশ শ্রেণি (HSC 2026)',
-        institution: 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
+        full_name: 'Rasu IT',
+        student_class: "Hon's 3rd Year",
+        institution: 'Maulvibazar Govt. College',
         target_study_hours_per_day: 5,
         preferred_language: 'bn',
         created_at: new Date().toISOString(),
       };
+    } else if (parsed.profile.id === 'demo-user-student-bd' && (parsed.profile.full_name === 'তানভীর আহমেদ' || !parsed.profile.full_name)) {
+      parsed.profile.full_name = 'Rasu IT';
+      parsed.profile.student_class = "Hon's 3rd Year";
+      parsed.profile.institution = 'Maulvibazar Govt. College';
+      saveDemoDataToStorage(parsed);
     }
     return parsed;
   } catch (e) {

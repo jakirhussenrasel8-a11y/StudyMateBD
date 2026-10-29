@@ -27,6 +27,10 @@ import {
   validateBackupJson,
   getTodayDateString 
 } from '../lib/storage';
+import { 
+  getDhakaDateString, 
+  getMsUntilNextDhakaMidnight 
+} from '../lib/dateUtils';
 import { User, Session } from '@supabase/supabase-js';
 
 interface ToastInfo {
@@ -94,6 +98,12 @@ interface AppContextType {
   tasksDueTodayCount: number;
   pendingTasksCount: number;
   completedTasksCount: number;
+
+  // Task-Based Daily Progress & Midnight Reset (Bangladesh Standard Time)
+  currentDhakaDate: string;
+  tasksScheduledTodayCount: number;
+  completedTasksTodayCount: number;
+  dailyProgressPercent: number;
 
   // CRUD Actions
   addSubject: (data: Omit<Subject, 'id' | 'user_id' | 'created_at'>) => Promise<boolean>;
@@ -201,6 +211,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [];
   });
   const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Automatic Bangladesh Standard Time (Asia/Dhaka, UTC+06:00) Midnight Tracker
+  const [currentDhakaDate, setCurrentDhakaDate] = useState<string>(() => getDhakaDateString());
+
+  useEffect(() => {
+    const checkAndSyncDate = () => {
+      const latestDhakaDate = getDhakaDateString();
+      setCurrentDhakaDate(prev => (prev !== latestDhakaDate ? latestDhakaDate : prev));
+    };
+
+    // 1. One-shot timer targeted specifically for the next 12:00:01 AM Asia/Dhaka
+    let timerId: number | undefined;
+    const scheduleMidnight = () => {
+      const ms = getMsUntilNextDhakaMidnight();
+      timerId = window.setTimeout(() => {
+        checkAndSyncDate();
+        scheduleMidnight();
+      }, ms + 250);
+    };
+    scheduleMidnight();
+
+    // 2. Periodic interval (every 30s) to handle suspended tabs, clock changes, or sleep/wake
+    const intervalId = window.setInterval(checkAndSyncDate, 30000);
+
+    // 3. Document visibility and window focus listeners
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndSyncDate();
+      }
+    };
+    const handleFocus = () => {
+      checkAndSyncDate();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // Task-linked Dedicated Timer State
   const [activeTimerTaskId, setActiveTimerTaskId] = useState<string | null>(null);
@@ -397,10 +451,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSessions(demo.sessions || []);
       setProfile(demo.profile || {
         id: 'demo-user-student-bd',
-        email: 'student@example.com',
-        full_name: 'তানভীর আহমেদ',
-        student_class: 'একাদশ শ্রেণি (HSC 2026)',
-        institution: 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
+        email: 'rasu.it@example.com',
+        full_name: 'Rasu IT',
+        student_class: "Hon's 3rd Year",
+        institution: 'Maulvibazar Govt. College',
         target_study_hours_per_day: 5,
         preferred_language: 'bn',
         created_at: new Date().toISOString(),
@@ -434,8 +488,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isDemoMode, user, subjects, tasks, routines, exams, sessions, profile]);
 
-  // 7. Computed Metrics
-  const todayStr = getTodayDateString();
+  // 7. Computed Metrics (Bangladesh Standard Time Aware)
+  const todayStr = currentDhakaDate;
 
   const todayStudyMinutes = useMemo(() => {
     return sessions
@@ -452,9 +506,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
   }, [sessions]);
 
+  // Task-Based Daily Progress calculation for today (Asia/Dhaka)
+  const tasksScheduledToday = useMemo(() => {
+    return tasks.filter(t => t.due_date === currentDhakaDate);
+  }, [tasks, currentDhakaDate]);
+
+  const tasksScheduledTodayCount = useMemo(() => {
+    return tasksScheduledToday.length;
+  }, [tasksScheduledToday]);
+
+  const completedTasksTodayCount = useMemo(() => {
+    return tasksScheduledToday.filter(t => t.status === 'completed').length;
+  }, [tasksScheduledToday]);
+
+  // Daily Progress (%) = (Number of Completed Tasks for Today / Total Tasks Scheduled for Today) × 100
+  // Displays 0% when no tasks are scheduled for today. Bounded [0, 100]%.
+  const dailyProgressPercent = useMemo(() => {
+    if (tasksScheduledTodayCount === 0) return 0;
+    const raw = (completedTasksTodayCount / tasksScheduledTodayCount) * 100;
+    return Math.min(100, Math.max(0, Math.round(raw)));
+  }, [completedTasksTodayCount, tasksScheduledTodayCount]);
+
   const tasksDueTodayCount = useMemo(() => {
-    return tasks.filter(t => t.due_date === todayStr && t.status !== 'completed').length;
-  }, [tasks, todayStr]);
+    return tasks.filter(t => t.due_date === currentDhakaDate && t.status !== 'completed').length;
+  }, [tasks, currentDhakaDate]);
 
   const pendingTasksCount = useMemo(() => {
     return tasks.filter(t => t.status !== 'completed').length;
@@ -1137,28 +1212,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(t.friends.kudosSent, 'success');
   }, [showToast, t]);
 
-  // Complete Account & Data Deletion
+  // Complete Account & Data Deletion (Auth + Database + Storage)
   const deleteUserAccountAndData = useCallback(async (): Promise<boolean> => {
     const client = getSupabaseClient();
     try {
       if (user && client) {
-        await client.from('study_sessions').delete().eq('user_id', user.id);
-        await client.from('tasks').delete().eq('user_id', user.id);
-        await client.from('exams').delete().eq('user_id', user.id);
-        await client.from('study_routines').delete().eq('user_id', user.id);
-        await client.from('friendships').delete().eq('user_id', user.id);
-        if (user.email) {
-          await client.from('friendships').delete().eq('friend_email', user.email);
+        let authDeleted = false;
+
+        // 1. First attempt: call secure server-side endpoint with Bearer auth
+        try {
+          const session = authSession || (await client.auth.getSession()).data.session;
+          if (session?.access_token) {
+            const config = getSupabaseConfig();
+            const res = await fetch('/api/delete-account', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                supabaseUrl: config.url,
+                anonKey: config.anonKey,
+              }),
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && !data.useRpc) {
+                authDeleted = true;
+              }
+            }
+          }
+        } catch (serverErr) {
+          console.warn('Server endpoint account deletion warning:', serverErr);
         }
-        await client.from('subjects').delete().eq('user_id', user.id);
-        await client.from('profiles').delete().eq('id', user.id);
-        await client.auth.signOut();
+
+        // 2. Second attempt / Fallback: call SECURITY DEFINER RPC delete_user_account()
+        if (!authDeleted) {
+          try {
+            const { error: rpcErr } = await client.rpc('delete_user_account');
+            if (!rpcErr) {
+              authDeleted = true;
+            } else {
+              console.warn('RPC delete_user_account response:', rpcErr);
+            }
+          } catch (rpcEx) {
+            console.warn('RPC delete_user_account error:', rpcEx);
+          }
+        }
+
+        // 3. Defensive cascade delete across all user data tables to ensure zero orphaned records
+        try {
+          await Promise.allSettled([
+            client.from('study_sessions').delete().eq('user_id', user.id),
+            client.from('tasks').delete().eq('user_id', user.id),
+            client.from('exams').delete().eq('user_id', user.id),
+            client.from('study_routines').delete().eq('user_id', user.id),
+            client.from('friendships').delete().eq('user_id', user.id),
+            user.email ? client.from('friendships').delete().eq('friend_email', user.email) : Promise.resolve(),
+            client.from('subjects').delete().eq('user_id', user.id),
+            client.from('profiles').delete().eq('id', user.id),
+          ]);
+        } catch (cascadeErr) {
+          console.warn('Cascade database deletion warning:', cascadeErr);
+        }
+
+        // 4. Invalidate and sign out auth session completely
+        try {
+          await client.auth.signOut();
+        } catch (soErr) {
+          console.warn('Signout during deletion error:', soErr);
+        }
       }
     } catch (err) {
-      console.error('Error deleting user account from Supabase:', err);
+      console.error('Error deleting user account:', err);
+      const msg = err instanceof Error ? err.message : 'অ্যাকাউন্ট স্থায়ীভাবে মুছতে ব্যর্থ হয়েছে';
+      showToast(msg, 'error');
+      return false;
     }
 
+    // 5. Clean all user cached storage and tokens
     try {
+      localStorage.removeItem('studymate_auth_token');
       localStorage.removeItem('studymate_cached_profile');
       localStorage.removeItem('studymate_demo_data_v1');
       localStorage.removeItem('studymate_friends');
@@ -1169,6 +1304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('studymate_supabase_key');
     } catch {}
 
+    // 6. Reset all state to clean empty slate
     setUser(null);
     setAuthSession(null);
     setProfile(null);
@@ -1178,10 +1314,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExams([]);
     setSessions([]);
     setFriends([]);
+    setIsDemoMode(true);
     setActiveTabState('dashboard');
     showToast(t.settings.deleteAccountSuccess, 'success');
     return true;
-  }, [user, showToast, t]);
+  }, [user, authSession, showToast, t]);
 
   // 13. Backup & Reset Operations
   const exportDataAsJson = useCallback(() => {
@@ -1723,6 +1860,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         tasksDueTodayCount,
         pendingTasksCount,
         completedTasksCount,
+        currentDhakaDate,
+        tasksScheduledTodayCount,
+        completedTasksTodayCount,
+        dailyProgressPercent,
         addSubject,
         updateSubject,
         deleteSubject,

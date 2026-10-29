@@ -52,26 +52,26 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/90 dark:bg-charcoal-900/90 backdrop-blur-md border-b border-[#E8E5ED] dark:border-charcoal-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-15 sm:h-16 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-30 bg-white/90 dark:bg-charcoal-900/90 backdrop-blur-md border-b border-[#E8E5ED] dark:border-charcoal-800 transition-colors w-full max-w-full overflow-hidden">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-2 min-w-0">
         {/* Logo and Brand with Reference Lavender Aesthetics */}
         <div 
           onClick={() => setActiveTab('dashboard')} 
-          className="flex items-center gap-2.5 cursor-pointer group select-none"
+          className="flex items-center gap-2 cursor-pointer group select-none shrink-0"
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-lavender-400 flex items-center justify-center text-charcoal-900 shadow-xs shadow-lavender-400/30 group-hover:scale-105 transition-transform">
-            <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-charcoal-900" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-lavender-400 flex items-center justify-center text-charcoal-900 shadow-xs shadow-lavender-400/30 group-hover:scale-105 transition-transform shrink-0">
+            <GraduationCap className="w-4 h-4 sm:w-6 sm:h-6 text-charcoal-900" />
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-black text-base sm:text-lg tracking-tight text-charcoal-900 dark:text-white">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1">
+              <span className="font-black text-sm sm:text-lg tracking-tight text-charcoal-900 dark:text-white truncate">
                 StudyMate
               </span>
-              <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full bg-[#FFE49A] text-charcoal-900">
+              <span className="text-[9px] sm:text-xs font-black px-1.5 py-0.5 rounded-full bg-[#FFE49A] text-charcoal-900 shrink-0">
                 BD
               </span>
             </div>
-            <p className="text-[10px] text-charcoal-500 dark:text-slate-400 hidden sm:block -mt-0.5 font-medium">
+            <p className="text-[10px] text-charcoal-500 dark:text-slate-400 hidden sm:block -mt-0.5 font-medium truncate">
               {t.tagline}
             </p>
           </div>
@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
         {timerIsRunning && (
           <button
             onClick={() => setActiveTab('timer')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition cursor-pointer active:scale-95 animate-pulse ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition cursor-pointer active:scale-95 animate-pulse shrink-0 ${
               isTimer15sWarning 
                 ? 'bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-950/80 dark:border-amber-700 dark:text-amber-300'
                 : 'bg-lavender-100 border-lavender-300 text-charcoal-900 dark:bg-charcoal-800 dark:border-lavender-800 dark:text-lavender-300'
@@ -89,22 +89,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
             title="চলমান টাইমার দেখুন"
           >
             {isTimer15sWarning ? (
-              <BellRing className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+              <BellRing className="w-3 h-3 text-amber-600 animate-bounce" />
             ) : (
-              <TimerIcon className="w-3.5 h-3.5 text-lavender-600 dark:text-lavender-400" />
+              <TimerIcon className="w-3 h-3 text-lavender-600 dark:text-lavender-400" />
             )}
-            <span className="font-mono font-bold text-xs">
+            <span className="font-mono font-bold text-[11px] sm:text-xs">
               {formatTimerMinSec(timerRemainingSeconds)}
             </span>
           </button>
         )}
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Study Streak Badge with Soft Warm Yellow */}
           <div 
             title={`${studyStreak} ${t.dashboard.streakFire}`}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FFF9E5] dark:bg-charcoal-800 border border-[#FFE49A] dark:border-charcoal-700 text-charcoal-900 dark:text-amber-300 text-xs font-bold"
+            className="hidden xs:flex items-center gap-1 px-2 py-1 rounded-full bg-[#FFF9E5] dark:bg-charcoal-800 border border-[#FFE49A] dark:border-charcoal-700 text-charcoal-900 dark:text-amber-300 text-xs font-bold shrink-0"
           >
             <Flame className={`w-3.5 h-3.5 fill-amber-500 text-amber-500 ${studyStreak > 0 ? 'animate-pulse' : 'opacity-40'}`} />
             <span>{studyStreak}</span>

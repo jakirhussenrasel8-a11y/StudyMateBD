@@ -29,6 +29,7 @@ import {
 import { getTodayDateString } from '../../lib/storage';
 import { getSixPeriodGreeting, formatTime12h } from '../../lib/timeFormat';
 import { StudentAvatar } from '../common/StudentAvatar';
+import { useDailyBengaliQuote } from '../../hooks/useDailyBengaliQuote';
 
 interface DashboardViewProps {
   onOpenCreateTask: () => void;
@@ -54,6 +55,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     tasksDueTodayCount, 
     pendingTasksCount, 
     completedTasksCount,
+    currentDhakaDate,
+    tasksScheduledTodayCount,
+    completedTasksTodayCount,
+    dailyProgressPercent,
     tasks, 
     subjects, 
     routines, 
@@ -64,13 +69,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     registerModal 
   } = useApp();
 
-  const todayStr = getTodayDateString();
+  const { quote: dailyQuote, author: dailyQuoteAuthor, categoryLabelBn: dailyQuoteCategory, formattedDhakaDate } = useDailyBengaliQuote();
 
-  // Profile Edit Modal State
+  const todayStr = currentDhakaDate || getTodayDateString();
+
+  // Profile Edit Modal State - Exact Demo defaults
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [studentName, setStudentName] = useState(profile?.full_name || 'তানভীর আহমেদ');
-  const [studentClass, setStudentClass] = useState(profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)');
-  const [institution, setInstitution] = useState(profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ');
+  const [studentName, setStudentName] = useState(profile?.full_name || 'Rasu IT');
+  const [studentClass, setStudentClass] = useState(profile?.student_class || "Hon's 3rd Year");
+  const [institution, setInstitution] = useState(profile?.institution || 'Maulvibazar Govt. College');
   const [studentGender, setStudentGender] = useState<'male' | 'female'>(profile?.gender || 'male');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -177,9 +184,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [subjects]);
 
   const handleOpenEditProfile = () => {
-    setStudentName(profile?.full_name || 'তানভীর আহমেদ');
-    setStudentClass(profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)');
-    setInstitution(profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ');
+    setStudentName(profile?.full_name || 'Rasu IT');
+    setStudentClass(profile?.student_class || "Hon's 3rd Year");
+    setInstitution(profile?.institution || 'Maulvibazar Govt. College');
     setStudentGender(profile?.gender || 'male');
     setIsEditProfileOpen(true);
   };
@@ -200,15 +207,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'তানভীর আহমেদ';
-  const displayClass = profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)';
-  const displayInstitution = profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ';
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Rasu IT';
+  const displayClass = profile?.student_class || "Hon's 3rd Year";
+  const displayInstitution = profile?.institution || 'Maulvibazar Govt. College';
 
-  // Overall completion percentage
+  // Overall task count
   const totalTasksCount = tasks.length;
-  const progressPercent = totalTasksCount > 0 
-    ? Math.round((completedTasksCount / totalTasksCount) * 100) 
-    : 45;
 
   const totalStudyHours = (todayStudyMinutes / 60).toFixed(1);
 
@@ -250,22 +254,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Progress Pill Bar (Matching Screen 2 top pill) */}
+        {/* Task-Based Daily Progress Pill Bar */}
         <div className="flex items-center gap-3 self-stretch sm:self-auto bg-white dark:bg-charcoal-900 p-2.5 sm:px-4 rounded-full border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs">
           <div className="flex items-center gap-2 text-xs font-bold text-charcoal-700 dark:text-slate-300">
-            <Sparkles className="w-4 h-4 text-lavender-500" />
-            <span>অগ্রগতি</span>
+            <Sparkles className="w-4 h-4 text-lavender-500 shrink-0" />
+            <span className="whitespace-nowrap">দৈনিক অগ্রগতি</span>
           </div>
-          <div className="w-28 sm:w-36 h-3 bg-[#F2EDF8] dark:bg-charcoal-800 rounded-full overflow-hidden p-0.5 border border-lavender-200/50">
+          <div className="w-24 xs:w-28 sm:w-36 h-3 bg-[#F2EDF8] dark:bg-charcoal-800 rounded-full overflow-hidden p-0.5 border border-lavender-200/50">
             <div 
-              className="h-full bg-lavender-400 rounded-full transition-all duration-500"
-              style={{ width: `${Math.max(10, progressPercent)}%` }}
+              className="h-full bg-lavender-400 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${dailyProgressPercent}%` }}
             />
           </div>
-          <span className="text-xs font-black text-charcoal-900 dark:text-white font-mono">
-            {progressPercent}%
+          <span className="text-xs font-black text-charcoal-900 dark:text-white font-mono shrink-0">
+            {dailyProgressPercent}%
           </span>
         </div>
+      </div>
+
+      {/* Daily Bengali Motivational Academic Quote (Deterministic at 6:00 AM Asia/Dhaka) */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#F5EEFD] via-white to-[#EAF5F3] dark:from-charcoal-900 dark:via-charcoal-900/90 dark:to-charcoal-800 p-4 sm:p-5 border border-lavender-200/80 dark:border-charcoal-700/80 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white dark:bg-charcoal-800 text-lavender-700 dark:text-lavender-300 shadow-2xs border border-lavender-200/60 dark:border-charcoal-700">
+              <Sparkles className="w-3.5 h-3.5 text-lavender-500 shrink-0" />
+              <span>সকাল ৬:০০ টার দৈনিক অনুপ্রেরণা</span>
+            </span>
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-lavender-100 dark:bg-charcoal-800 text-charcoal-600 dark:text-slate-300 font-semibold">
+              {dailyQuoteCategory}
+            </span>
+          </div>
+          <span className="text-[11px] font-medium text-charcoal-400 dark:text-slate-400">
+            {formattedDhakaDate}
+          </span>
+        </div>
+
+        <blockquote className="my-1.5 pl-3 border-l-3 border-lavender-400">
+          <p className="text-sm sm:text-base font-semibold text-charcoal-900 dark:text-slate-100 leading-relaxed font-['Hind_Siliguri',sans-serif]">
+            "{dailyQuote}"
+          </p>
+          <footer className="mt-1.5 text-xs sm:text-sm font-bold text-lavender-600 dark:text-lavender-400 flex items-center gap-1.5">
+            <span>—</span>
+            <span>{dailyQuoteAuthor}</span>
+          </footer>
+        </blockquote>
       </div>
 
       {/* 2. Headline: "Your Progress Today" with Quick Search */}
@@ -305,14 +337,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Lessons / Tasks Done (Pastel Mint #CFE4E0) */}
+          {/* Card 1: Lessons / Tasks Done Today (Pastel Mint #CFE4E0) */}
           <div className="bg-[#E6F4F1] dark:bg-pastelMint-500/10 rounded-3xl p-5 border border-pastelMint-200 dark:border-pastelMint-500/30 flex flex-col justify-between shadow-xs relative overflow-hidden group">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-charcoal-700 dark:text-pastelMint-200 text-xs font-bold">
                 <div className="p-2 rounded-2xl bg-white dark:bg-charcoal-800 text-pastelMint-500 shadow-xs">
                   <BookOpen className="w-4 h-4" />
                 </div>
-                <span>টাস্ক ও লেসন</span>
+                <span>আজকের টাস্ক অগ্রগতি</span>
               </div>
               <button 
                 onClick={() => setActiveTab('tasks')}
@@ -325,15 +357,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="mt-4 flex items-baseline gap-2">
               <span className="text-3xl sm:text-4xl font-black text-charcoal-900 dark:text-white font-mono">
-                {completedTasksCount}
+                {completedTasksTodayCount}
               </span>
               <span className="text-xs text-charcoal-500 dark:text-pastelMint-200 font-bold">
-                / {totalTasksCount} সম্পন্ন
+                / {tasksScheduledTodayCount} আজকের সম্পন্ন
               </span>
             </div>
 
-            <div className="mt-3 pt-3 border-t border-pastelMint-200/80 dark:border-pastelMint-500/20 text-[11px] text-charcoal-600 dark:text-slate-300 font-medium">
-              বাকি আছে: <span className="font-bold text-charcoal-900 dark:text-white">{pendingTasksCount} টি</span>
+            <div className="mt-3 pt-3 border-t border-pastelMint-200/80 dark:border-pastelMint-500/20 text-[11px] text-charcoal-600 dark:text-slate-300 font-medium flex items-center justify-between">
+              <span>আজকের প্রগ্রেস: <span className="font-bold text-charcoal-900 dark:text-white">{dailyProgressPercent}%</span></span>
+              <span>মোট বাকি: <span className="font-bold text-charcoal-900 dark:text-white">{pendingTasksCount} টি</span></span>
             </div>
           </div>
 
@@ -838,7 +871,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     required
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="যেমন: তানভীর আহমেদ"
+                    placeholder="যেমন: Rasu IT"
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                   />
                 </div>
@@ -855,7 +888,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     required
                     value={studentClass}
                     onChange={(e) => setStudentClass(e.target.value)}
-                    placeholder="যেমন: একাদশ শ্রেণি (HSC 2026)"
+                    placeholder="যেমন: Hon's 3rd Year"
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                   />
                 </div>
@@ -872,7 +905,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     required
                     value={institution}
                     onChange={(e) => setInstitution(e.target.value)}
-                    placeholder="যেমন: ঢাকা রেসিডেনসিয়াল মডেল কলেজ"
+                    placeholder="যেমন: Maulvibazar Govt. College"
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                   />
                 </div>

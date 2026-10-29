@@ -112,65 +112,65 @@ export const AnalyticsView: React.FC = () => {
       </div>
 
       {/* 4 Summary Cards (Pastel Palette from Reference Image) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Study Time - Soft Yellow */}
-        <div className="bg-[#FFF9E5] dark:bg-pastelYellow-400/10 rounded-3xl p-5 border border-[#FFE49A] dark:border-pastelYellow-400/30 shadow-xs">
+        <div className="bg-[#FFF9E5] dark:bg-pastelYellow-400/10 rounded-3xl p-3.5 sm:p-5 border border-[#FFE49A] dark:border-pastelYellow-400/30 shadow-xs">
           <div className="flex items-center justify-between text-charcoal-700 dark:text-amber-200">
-            <span className="text-xs font-bold">{t.analytics.totalStudyTime}</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-bold truncate">{t.analytics.totalStudyTime}</span>
+            <Clock className="w-4 h-4 text-amber-500 shrink-0" />
           </div>
-          <div className="mt-3 text-2xl sm:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
+          <div className="mt-2.5 sm:mt-3 text-xl sm:text-2xl md:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
             {Math.floor(totalRecordedMinutes / 60)}
             <span className="text-xs font-bold text-charcoal-500 ml-1">{t.dashboard.hours}</span>{' '}
             {totalRecordedMinutes % 60}
             <span className="text-xs font-bold text-charcoal-500 ml-1">{t.dashboard.minutes}</span>
           </div>
-          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium truncate">
             মোট {sessions.length} টি সেশন সম্পন্ন
           </p>
         </div>
 
         {/* Study Time Today - Mint */}
-        <div className="bg-[#E6F4F1] dark:bg-pastelMint-500/10 rounded-3xl p-5 border border-pastelMint-200 dark:border-pastelMint-500/30 shadow-xs">
+        <div className="bg-[#E6F4F1] dark:bg-pastelMint-500/10 rounded-3xl p-3.5 sm:p-5 border border-pastelMint-200 dark:border-pastelMint-500/30 shadow-xs">
           <div className="flex items-center justify-between text-charcoal-700 dark:text-pastelMint-200">
-            <span className="text-xs font-bold">{t.dashboard.todayStudyTime}</span>
-            <Calendar className="w-4 h-4 text-pastelMint-500" />
+            <span className="text-xs font-bold truncate">{t.dashboard.todayStudyTime}</span>
+            <Calendar className="w-4 h-4 text-pastelMint-500 shrink-0" />
           </div>
-          <div className="mt-3 text-2xl sm:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
+          <div className="mt-2.5 sm:mt-3 text-xl sm:text-2xl md:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
             {Math.floor(todayStudyMinutes / 60) > 0 && `${Math.floor(todayStudyMinutes / 60)}h `}
             {todayStudyMinutes % 60}
             <span className="text-xs font-bold text-charcoal-500 ml-1">{t.dashboard.minutes}</span>
           </div>
-          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium truncate">
             সাপ্তাহিক: {Math.floor(weeklyStudyMinutes / 60)}h {weeklyStudyMinutes % 60}m
           </p>
         </div>
 
         {/* Study Streak - Soft Lavender */}
-        <div className="bg-[#F2EDF8] dark:bg-lavender-950/20 rounded-3xl p-5 border border-lavender-200 dark:border-lavender-800/40 shadow-xs">
+        <div className="bg-[#F2EDF8] dark:bg-lavender-950/20 rounded-3xl p-3.5 sm:p-5 border border-lavender-200 dark:border-lavender-800/40 shadow-xs">
           <div className="flex items-center justify-between text-charcoal-700 dark:text-lavender-200">
-            <span className="text-xs font-bold">{t.analytics.studyStreak}</span>
-            <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+            <span className="text-xs font-bold truncate">{t.analytics.studyStreak}</span>
+            <Flame className="w-4 h-4 text-orange-500 fill-orange-500 shrink-0" />
           </div>
-          <div className="mt-3 text-2xl sm:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
+          <div className="mt-2.5 sm:mt-3 text-xl sm:text-2xl md:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
             {studyStreak}
             <span className="text-xs font-bold text-charcoal-500 ml-1">{t.dashboard.days}</span>
           </div>
-          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium truncate">
             ধারাবাহিকতা বজায় রাখুন
           </p>
         </div>
 
         {/* Completed Tasks - Sky Blue */}
-        <div className="bg-[#E4F1FD] dark:bg-pastelBlue-400/10 rounded-3xl p-5 border border-pastelBlue-200 dark:border-pastelBlue-400/30 shadow-xs">
+        <div className="bg-[#E4F1FD] dark:bg-pastelBlue-400/10 rounded-3xl p-3.5 sm:p-5 border border-pastelBlue-200 dark:border-pastelBlue-400/30 shadow-xs">
           <div className="flex items-center justify-between text-charcoal-700 dark:text-blue-200">
-            <span className="text-xs font-bold">{t.analytics.completedTasksRatio}</span>
-            <CheckCircle2 className="w-4 h-4 text-pastelBlue-400" />
+            <span className="text-xs font-bold truncate">{t.analytics.completedTasksRatio}</span>
+            <CheckCircle2 className="w-4 h-4 text-pastelBlue-400 shrink-0" />
           </div>
-          <div className="mt-3 text-2xl sm:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
+          <div className="mt-2.5 sm:mt-3 text-xl sm:text-2xl md:text-3xl font-black text-charcoal-900 dark:text-white font-mono">
             {taskCompletionRate}%
           </div>
-          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-[11px] text-charcoal-500 dark:text-slate-400 mt-1 font-medium truncate">
             {completedTasks} / {totalTasks} টি টাস্ক সম্পন্ন
           </p>
         </div>

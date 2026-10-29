@@ -41,7 +41,7 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8F7FA] dark:bg-[#0E0D12] text-charcoal-900 dark:text-[#F1F1F5] transition-colors">
+    <div className="min-h-screen flex flex-col bg-[#F8F7FA] dark:bg-[#0E0D12] text-charcoal-900 dark:text-[#F1F1F5] transition-colors w-full max-w-full overflow-x-hidden">
       {/* Toast Notifications */}
       <Toast />
 
@@ -56,12 +56,12 @@ const MainLayout: React.FC = () => {
       <Header onOpenAuth={() => setIsAuthModalOpen(true)} />
 
       {/* Main Body Area: Sidebar (Desktop) + Content */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className="flex-1 flex max-w-7xl w-full mx-auto min-w-0">
         {/* Desktop / Tablet Sidebar */}
         <Sidebar />
 
         {/* Dynamic Content View with mobile bottom nav clearance */}
-        <main className="flex-1 px-3.5 sm:px-6 lg:px-8 pt-3.5 sm:pt-6 pb-28 md:pb-8 min-w-0">
+        <main className="flex-1 w-full max-w-full px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-28 md:pb-8 min-w-0 overflow-x-hidden">
           {activeTab === 'dashboard' && (
             <DashboardView
               onOpenCreateTask={handleOpenCreateTask}

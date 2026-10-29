@@ -254,7 +254,7 @@ export const PomodoroView: React.FC = () => {
       )}
 
       {/* Main Focus Card with Lavender/Mint Reference Styling */}
-      <div className={`rounded-3xl p-6 sm:p-8 border transition-all text-center relative overflow-hidden shadow-xs ${
+      <div className={`rounded-3xl p-4 xs:p-6 sm:p-8 border transition-all text-center relative overflow-hidden shadow-xs ${
         isTimer15sWarning
           ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700'
           : timerMode === 'pomodoro'
@@ -267,7 +267,7 @@ export const PomodoroView: React.FC = () => {
         <div className="flex items-center justify-center p-1.5 rounded-full bg-[#F2EDF8] dark:bg-charcoal-800 text-xs font-bold mb-6 max-w-sm mx-auto w-full border border-lavender-200/60 dark:border-charcoal-700">
           <button
             onClick={() => switchTimerMode('pomodoro')}
-            className={`flex-1 py-2 px-2 rounded-full transition cursor-pointer text-center text-xs font-extrabold touch-manipulation ${
+            className={`flex-1 py-2 px-1.5 xs:px-2 rounded-full transition cursor-pointer text-center text-[11px] xs:text-xs font-extrabold touch-manipulation ${
               timerMode === 'pomodoro'
                 ? 'bg-charcoal-900 text-white shadow-xs'
                 : 'text-charcoal-600 dark:text-slate-300 hover:text-charcoal-900'
@@ -277,7 +277,7 @@ export const PomodoroView: React.FC = () => {
           </button>
           <button
             onClick={() => switchTimerMode('short_break')}
-            className={`flex-1 py-2 px-2 rounded-full transition cursor-pointer text-center text-xs font-extrabold touch-manipulation ${
+            className={`flex-1 py-2 px-1.5 xs:px-2 rounded-full transition cursor-pointer text-center text-[11px] xs:text-xs font-extrabold touch-manipulation ${
               timerMode === 'short_break'
                 ? 'bg-[#5BA497] text-white shadow-xs'
                 : 'text-charcoal-600 dark:text-slate-300 hover:text-charcoal-900'
@@ -287,7 +287,7 @@ export const PomodoroView: React.FC = () => {
           </button>
           <button
             onClick={() => switchTimerMode('long_break')}
-            className={`flex-1 py-2 px-2 rounded-full transition cursor-pointer text-center text-xs font-extrabold touch-manipulation ${
+            className={`flex-1 py-2 px-1.5 xs:px-2 rounded-full transition cursor-pointer text-center text-[11px] xs:text-xs font-extrabold touch-manipulation ${
               timerMode === 'long_break'
                 ? 'bg-lavender-500 text-white shadow-xs'
                 : 'text-charcoal-600 dark:text-slate-300 hover:text-charcoal-900'
@@ -317,8 +317,8 @@ export const PomodoroView: React.FC = () => {
         </div>
 
         {/* Big Circular Countdown Display */}
-        <div className="my-6 flex flex-col items-center justify-center">
-          <div className="relative w-56 h-56 sm:w-64 sm:h-64 flex items-center justify-center">
+        <div className="my-4 sm:my-6 flex flex-col items-center justify-center">
+          <div className="relative w-48 h-48 xs:w-56 xs:h-56 sm:w-64 sm:h-64 flex items-center justify-center">
             {/* SVG circular progress ring */}
             <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
               <circle

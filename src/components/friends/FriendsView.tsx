@@ -215,21 +215,21 @@ export const FriendsView: React.FC = () => {
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex items-center gap-3.5">
               <div className="w-13 h-13 rounded-2xl bg-[#C5A7E2] text-charcoal-900 font-black text-xl flex items-center justify-center shadow-xs">
-                {(profile?.full_name || 'তা')[0]}
+                {(profile?.full_name || 'R')[0]}
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-base font-black text-charcoal-900 dark:text-white">
-                    {profile?.full_name || 'তানভীর আহমেদ'}
+                    {profile?.full_name || 'Rasu IT'}
                   </span>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-mint-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
                     আপনি (You)
                   </span>
                 </div>
                 <div className="text-xs text-charcoal-500 dark:text-slate-400 font-semibold mt-0.5 flex items-center gap-2 flex-wrap">
-                  <span>{profile?.student_class || 'একাদশ শ্রেণি (HSC 2026)'}</span>
+                  <span>{profile?.student_class || "Hon's 3rd Year"}</span>
                   <span>•</span>
-                  <span>{profile?.institution || 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ'}</span>
+                  <span>{profile?.institution || 'Maulvibazar Govt. College'}</span>
                 </div>
               </div>
             </div>

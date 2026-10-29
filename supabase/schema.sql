@@ -275,3 +275,41 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ==============================================================================
+-- COMPLETE AND PERMANENT ACCOUNT DELETION RPC
+-- Deletes the calling student's authentication account and all associated data.
+-- Since all user data tables reference auth.users(id) ON DELETE CASCADE,
+-- deleting the user from auth.users permanently purges all records.
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  current_user_id uuid;
+BEGIN
+  current_user_id := auth.uid();
+  IF current_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Explicit cascade delete on all user records to guarantee no orphans
+  DELETE FROM public.study_sessions WHERE user_id = current_user_id;
+  DELETE FROM public.tasks WHERE user_id = current_user_id;
+  DELETE FROM public.exams WHERE user_id = current_user_id;
+  DELETE FROM public.study_routines WHERE user_id = current_user_id;
+  DELETE FROM public.subjects WHERE user_id = current_user_id;
+  DELETE FROM public.profiles WHERE id = current_user_id;
+
+  -- Permanently delete the user from auth.users so they cannot log in again
+  DELETE FROM auth.users WHERE id = current_user_id;
+
+  RETURN true;
+END;
+$$;
+
+-- Grant execution to authenticated users
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;

@@ -242,7 +242,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
 
       {/* Weekday Switcher Bar (Bangladeshi 7 days) */}
       <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-2.5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs">
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        <div className="grid grid-cols-7 gap-0.5 xs:gap-1 sm:gap-2">
           {t.routine.shortDayNames.map((dayName, idx) => {
             const isSelected = activeDay === idx;
             const slotCount = routines.filter(r => r.day_of_week === idx).length;
@@ -252,23 +252,23 @@ export const RoutineView: React.FC<RoutineViewProps> = ({ onOpenCreate }) => {
               <button
                 key={idx}
                 onClick={() => setActiveDay(idx as DayOfWeek)}
-                className={`flex flex-col items-center justify-center py-2.5 sm:py-3 rounded-2xl transition cursor-pointer select-none active:scale-95 ${
+                className={`flex flex-col items-center justify-center py-2 sm:py-3 px-0.5 rounded-xl sm:rounded-2xl transition cursor-pointer select-none active:scale-95 min-w-0 ${
                   isSelected
                     ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 font-black shadow-xs'
                     : 'hover:bg-[#F2EDF8] dark:hover:bg-charcoal-800 text-charcoal-700 dark:text-slate-300'
                 }`}
               >
-                <span className="text-xs sm:text-sm font-extrabold">{dayName}</span>
-                <div className="flex items-center gap-1 mt-1">
+                <span className="text-[11px] xs:text-xs sm:text-sm font-extrabold truncate">{dayName}</span>
+                <div className="flex items-center gap-0.5 xs:gap-1 mt-0.5 sm:mt-1">
                   {slotCount > 0 && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    <span className={`text-[9px] xs:text-[10px] px-1 sm:px-2 py-0.5 rounded-full font-bold ${
                       isSelected ? 'bg-lavender-400 text-charcoal-900' : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-600 dark:text-slate-400'
                     }`}>
                       {slotCount}
                     </span>
                   )}
                   {isToday && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-rose-500'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-white' : 'bg-rose-500'}`} />
                   )}
                 </div>
               </button>

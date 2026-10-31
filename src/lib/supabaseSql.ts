@@ -244,7 +244,7 @@ ALTER TABLE public.friend_cheers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can search student profiles" ON public.profiles;
 CREATE POLICY "Users can search student profiles"
   ON public.profiles FOR SELECT
-  TO authenticated
+  TO authenticated, anon
   USING (true);
 
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;

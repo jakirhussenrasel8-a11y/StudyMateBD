@@ -457,8 +457,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } catch {}
             return user?.user_metadata?.gender || 'male';
           })();
+          let finalCode = profRes.data.student_code;
+          if (!finalCode && user) {
+            finalCode = 'SM-' + user.id.replace(/-/g, '').substring(0, 6).toUpperCase();
+            client.from('profiles').update({ student_code: finalCode }).eq('id', user.id).then();
+          }
           const mergedProf: Profile = {
             ...profRes.data,
+            student_code: finalCode,
             gender: profRes.data.gender || cachedGender || 'male',
           };
           setProfile(mergedProf);
@@ -467,13 +473,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch {}
         } else if (user) {
           // If no profile row exists yet, initialize it
+          const genCode = 'SM-' + user.id.replace(/-/g, '').substring(0, 6).toUpperCase();
           const initialUserProf: Profile = {
             id: user.id,
             email: user.email || '',
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'তানভীর আহমেদ',
-            student_class: 'একাদশ শ্রেণি (HSC 2026)',
-            institution: 'ঢাকা রেসিডেনসিয়াল মডেল কলেজ',
-            target_study_hours_per_day: 5,
+            student_code: genCode,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'শিক্ষার্থী',
+            student_class: '',
+            institution: '',
+            target_study_hours_per_day: 4,
             preferred_language: 'bn',
             created_at: new Date().toISOString(),
           };
@@ -1504,34 +1512,100 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user]);
 
   const lookupStudentByCode = useCallback(async (code: string): Promise<{ id?: string; student_code?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null> => {
-    const clean = code.trim().toUpperCase();
-    if (!clean || clean.length < 3) return null;
+    const raw = code.trim();
+    if (!raw || raw.length < 2) return null;
+
+    const upper = raw.toUpperCase();
+    const withPrefix = upper.startsWith('SM-') ? upper : `SM-${upper}`;
+    const bareCode = upper.replace(/^SM[-_\s]*/i, '');
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
 
     const client = getSupabaseClient();
     if (client) {
       try {
-        const { data, error } = await client
+        let query = client
           .from('profiles')
-          .select('id, student_code, email, full_name, student_class, institution, gender')
-          .or(`student_code.ilike.${clean},id.eq.${clean.toLowerCase()}`)
-          .maybeSingle();
+          .select('id, student_code, email, full_name, student_class, institution, gender');
+
+        // Never pass a non-UUID string to id.eq in PostgreSQL (prevents ERROR 22P02)
+        if (isUuid) {
+          query = query.or(`id.eq.${raw},student_code.ilike.${withPrefix},student_code.ilike.${upper}`);
+        } else if (raw.includes('@')) {
+          query = query.or(`email.ilike.${raw.toLowerCase()},student_code.ilike.${withPrefix}`);
+        } else {
+          query = query.or(`student_code.ilike.${withPrefix},student_code.ilike.${upper},student_code.ilike.${bareCode}`);
+        }
+
+        const { data, error } = await query.limit(1).maybeSingle();
 
         if (data && !error) {
           return {
             id: data.id,
-            student_code: data.student_code || ('SM-' + data.id.replace(/-/g, '').substring(0, 6).toUpperCase()),
+            student_code: data.student_code || withPrefix,
             name: data.full_name || undefined,
             student_class: data.student_class || undefined,
             institution: data.institution || undefined,
             gender: (data.gender as 'male' | 'female') || 'male',
           };
         }
+
+        // Secondary fallback: if student_code in database was null or not backfilled yet,
+        // match by the 6-hex-character ID prefix
+        if (bareCode.length === 6 && /^[0-9A-F]{6}$/i.test(bareCode)) {
+          const { data: allProfs } = await client
+            .from('profiles')
+            .select('id, student_code, email, full_name, student_class, institution, gender');
+          if (allProfs && allProfs.length > 0) {
+            const found = allProfs.find(p => {
+              const derived = ('SM-' + p.id.replace(/-/g, '').substring(0, 6)).toUpperCase();
+              const existing = (p.student_code || '').toUpperCase();
+              return derived === withPrefix || derived === upper || existing === withPrefix || existing === upper;
+            });
+            if (found) {
+              if (!found.student_code) {
+                client.from('profiles').update({ student_code: withPrefix }).eq('id', found.id).then();
+              }
+              return {
+                id: found.id,
+                student_code: found.student_code || withPrefix,
+                name: found.full_name || undefined,
+                student_class: found.student_class || undefined,
+                institution: found.institution || undefined,
+                gender: (found.gender as 'male' | 'female') || 'male',
+              };
+            }
+          }
+        }
       } catch (e) {
         console.warn('Student code lookup warning:', e);
       }
     }
+
+    // Local / Demo mode lookup fallback
+    if (isDemoMode) {
+      try {
+        const rawFriends = localStorage.getItem('studymate_demo_friends_v2');
+        if (rawFriends) {
+          const list: Friend[] = JSON.parse(rawFriends);
+          const found = list.find(f => {
+            const fc = (f.friend_code || '').toUpperCase();
+            return fc === withPrefix || fc === upper || fc.replace(/^SM[-_\s]*/i, '') === bareCode;
+          });
+          if (found) {
+            return {
+              id: found.friend_id || found.id,
+              student_code: found.friend_code || withPrefix,
+              name: found.friend_name,
+              student_class: found.student_class,
+              institution: found.institution,
+              gender: found.gender,
+            };
+          }
+        }
+      } catch {}
+    }
     return null;
-  }, []);
+  }, [isDemoMode]);
 
   const lookupStudentByEmail = useCallback(async (email: string): Promise<{ id?: string; student_code?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null> => {
     const clean = email.trim();
@@ -1615,14 +1689,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         let recipientProfile: { id: string; student_code?: string; email?: string; full_name?: string; student_class?: string; institution?: string; gender?: string } | null = null;
         
-        // Search by student_code, id, or email
-        const { data: recByCode } = await client
-          .from('profiles')
-          .select('id, student_code, email, full_name, student_class, institution, gender')
-          .or(`student_code.ilike.${targetCode},id.eq.${rawCode.toLowerCase()},email.ilike.${rawCode.toLowerCase()}`)
-          .maybeSingle();
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawCode);
+        const codeWithPrefix = targetCode.startsWith('SM-') ? targetCode : `SM-${targetCode}`;
+        const codeBare = targetCode.replace(/^SM[-_\s]*/i, '');
 
+        let query = client
+          .from('profiles')
+          .select('id, student_code, email, full_name, student_class, institution, gender');
+
+        if (isUuid) {
+          query = query.or(`id.eq.${rawCode},student_code.ilike.${codeWithPrefix},student_code.ilike.${targetCode}`);
+        } else if (rawCode.includes('@')) {
+          query = query.or(`email.ilike.${rawCode.toLowerCase()},student_code.ilike.${codeWithPrefix}`);
+        } else {
+          query = query.or(`student_code.ilike.${codeWithPrefix},student_code.ilike.${targetCode},student_code.ilike.${codeBare}`);
+        }
+
+        const { data: recByCode } = await query.limit(1).maybeSingle();
         recipientProfile = recByCode;
+
+        // Fallback for older profiles without student_code in database
+        if (!recipientProfile && codeBare.length === 6 && /^[0-9A-F]{6}$/i.test(codeBare)) {
+          const { data: allProfs } = await client
+            .from('profiles')
+            .select('id, student_code, email, full_name, student_class, institution, gender');
+          if (allProfs && allProfs.length > 0) {
+            recipientProfile = allProfs.find(p => {
+              const derived = ('SM-' + p.id.replace(/-/g, '').substring(0, 6)).toUpperCase();
+              const existing = (p.student_code || '').toUpperCase();
+              return derived === codeWithPrefix || derived === targetCode || existing === codeWithPrefix || existing === targetCode;
+            }) || null;
+          }
+        }
 
         if (!recipientProfile) {
           showToast('এই আইডিতে কোনো নিবন্ধিত শিক্ষার্থী পাওয়া যায়নি।', 'error');

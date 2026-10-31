@@ -22,6 +22,7 @@ import {
   TrendingUp,
   Award,
   Loader2,
+  AlertCircle,
   Mail,
   Send,
   Bell,
@@ -142,10 +143,9 @@ export const FriendsView: React.FC = () => {
     setTimeout(() => setCopiedCode(false), 2500);
   };
 
-  const handleCodeChange = async (val: string) => {
-    setFriendCodeInput(val);
+  const triggerStudentSearch = async (val: string) => {
     const clean = val.trim().toUpperCase();
-    if (clean.length >= 3) {
+    if (clean.length >= 2) {
       setIsSearchingStudent(true);
       try {
         const found = await lookupStudentByCode(clean);
@@ -154,18 +154,27 @@ export const FriendsView: React.FC = () => {
           if (found.student_class) setStudentClass(found.student_class);
           if (found.institution) setInstitution(found.institution);
           if (found.gender) setFriendGender(found.gender);
-          setLookupMessage(t.friends.studentFound || 'শিক্ষার্থীর তথ্য পাওয়া গেছে!');
+          setLookupMessage('found');
         } else {
-          setLookupMessage(null);
+          setLookupMessage('not_found');
         }
       } catch {
-        setLookupMessage(null);
+        setLookupMessage('not_found');
       } finally {
         setIsSearchingStudent(false);
       }
     } else {
       setLookupMessage(null);
     }
+  };
+
+  const handleCodeChange = (val: string) => {
+    setFriendCodeInput(val);
+    if (!val.trim()) {
+      setLookupMessage(null);
+      return;
+    }
+    triggerStudentSearch(val);
   };
 
   const handleSendRequestSubmit = async (e: React.FormEvent) => {
@@ -1087,36 +1096,65 @@ export const FriendsView: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={friendCodeInput}
-                    onChange={(e) => handleCodeChange(e.target.value)}
-                    placeholder="যেমন: SM-A1B2C3"
-                    className="w-full px-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400 font-mono uppercase"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      required
+                      value={friendCodeInput}
+                      onChange={(e) => handleCodeChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          triggerStudentSearch(friendCodeInput);
+                        }
+                      }}
+                      placeholder="যেমন: SM-A1B2C3"
+                      className="w-full px-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400 font-mono uppercase"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => triggerStudentSearch(friendCodeInput)}
+                    disabled={isSearchingStudent || !friendCodeInput.trim()}
+                    className="px-4 py-2.5 rounded-2xl bg-lavender-400 hover:bg-lavender-500 text-charcoal-900 font-black text-xs transition cursor-pointer active:scale-95 disabled:opacity-50 shrink-0 flex items-center gap-1.5"
+                  >
+                    {isSearchingStudent ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Search className="w-3.5 h-3.5" />
+                    )}
+                    <span>খুঁজুন</span>
+                  </button>
                 </div>
                 <p className="text-[11px] text-charcoal-400 dark:text-slate-500 mt-1">
-                  বন্ধুর স্টুডেন্ট আইডি লিখলে তার প্রোফাইল স্বয়ংক্রিয়ভাবে খুঁজে বের করা হবে।
+                  বন্ধুর স্টুডেন্ট আইডি লিখলে বা 'খুঁজুন' বাটনে চাপলে তার প্রোফাইল পাওয়া যাবে।
                 </p>
               </div>
 
               {/* Found Student Profile Card Banner */}
-              {lookupMessage && (
+              {lookupMessage === 'found' && (
                 <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center gap-3 animate-in fade-in">
                   <StudentAvatar gender={friendGender} size="md" />
                   <div className="min-w-0 flex-1">
                     <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 block">
-                      ✓ {lookupMessage}
+                      ✓ শিক্ষার্থীর তথ্য পাওয়া গেছে!
                     </span>
                     <h4 className="text-xs font-black text-charcoal-900 dark:text-white truncate">
-                      {friendName}
+                      {friendName || 'শিক্ষার্থী'}
                     </h4>
                     <p className="text-[11px] text-charcoal-600 dark:text-slate-400 truncate">
-                      {studentClass} {institution ? `• ${institution}` : ''}
+                      {studentClass || 'ক্লাস/শ্রেণি'} {institution ? `• ${institution}` : ''}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* Not Found Banner */}
+              {lookupMessage === 'not_found' && (
+                <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>এই স্টুডেন্ট আইডিতে কোনো শিক্ষার্থী পাওয়া যায়নি। আইডিটি সঠিক কিনা পরীক্ষা করুন।</span>
                 </div>
               )}
 

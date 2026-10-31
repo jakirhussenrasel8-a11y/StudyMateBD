@@ -23,7 +23,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { formatTime12h } from '../../lib/timeFormat';
-import { formatDhakaDateBengali, getDhakaDateString } from '../../lib/dateUtils';
+import { formatDhakaDateBengali, formatDateBengaliShort, getDhakaDateString } from '../../lib/dateUtils';
 import { useDailyBengaliQuote } from '../../hooks/useDailyBengaliQuote';
 import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
@@ -158,15 +158,35 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
 
     try {
       const element = printDocRef.current;
-      const sanitizedName = studentName.replace(/[^a-zA-Z0-9\u0980-\u09FF]/g, '_');
+      const sanitizedName = (studentName || 'Student').replace(/[^a-zA-Z0-9\u0980-\u09FF]/g, '_');
       const filename = `${sanitizedName}_Study_Routine_Schedule_${todayStr}.pdf`;
 
-      // html2canvas-pro natively supports modern CSS color functions including oklch()
+      // Ensure all web fonts (Hind Siliguri & Noto Sans Bengali) are fully loaded
+      await document.fonts.ready;
+      await new Promise((r) => setTimeout(r, 150));
+
+      // Render ultra-crisp canvas with html2canvas-pro at 3x scale
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          const docEl = clonedDoc.getElementById('printable-schedule-document');
+          if (docEl) {
+            docEl.style.fontFamily = "'Hind Siliguri', 'Noto Sans Bengali', sans-serif";
+            docEl.style.textRendering = 'optimizeLegibility';
+            docEl.style.letterSpacing = 'normal';
+            // Enforce letter-spacing normal and font smoothing on all text nodes to prevent conjunct breaking
+            const allTextNodes = docEl.querySelectorAll('*');
+            allTextNodes.forEach((node) => {
+              if (node instanceof HTMLElement) {
+                node.style.letterSpacing = 'normal';
+                node.style.textRendering = 'optimizeLegibility';
+              }
+            });
+          }
+        },
       });
 
       const pdf = new jsPDF({
@@ -178,108 +198,36 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 8;
-      const contentWidth = pageWidth - margin * 2;
-      const pagePrintableHeight = pageHeight - margin * 2;
+      const margin = 6; // 6mm margin for clean printable borders
+      const printableWidth = pageWidth - margin * 2;
+      const printableHeight = pageHeight - margin * 2;
 
-      // Calculate maximum height per page in canvas pixel units
-      const maxPageCanvasHeight = (pagePrintableHeight / contentWidth) * canvas.width;
+      // Fit the entire rendered tables and content on EXACTLY 1 single A4 page with NO cut-offs
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
 
-      if (canvas.height <= maxPageCanvasHeight) {
-        // Fits cleanly on a single page
-        const imgData = canvas.toDataURL('image/jpeg', 0.98);
-        const slicePdfHeight = (canvas.height * contentWidth) / canvas.width;
-        pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, slicePdfHeight, undefined, 'FAST');
-      } else {
-        // Multi-page document: compute smart break points so that no table row or text element is bisected
-        const containerRect = element.getBoundingClientRect();
-        const scale = canvas.width / element.offsetWidth;
+      let renderWidth = printableWidth;
+      let renderHeight = (imgHeight * renderWidth) / imgWidth;
 
-        // Elements that must not be cut in half horizontally
-        const breakSensitiveElements = Array.from(
-          element.querySelectorAll('tr, thead, h2, h3, .print-page-break-avoid, .avoid-break, .pdf-section')
-        );
-
-        const avoidBoxes = breakSensitiveElements.map(el => {
-          const r = el.getBoundingClientRect();
-          return {
-            top: (r.top - containerRect.top) * scale,
-            bottom: (r.bottom - containerRect.top) * scale,
-          };
-        });
-
-        const cutPoints: number[] = [0];
-        let currentY = 0;
-
-        while (currentY < canvas.height) {
-          let candidateCutY = currentY + maxPageCanvasHeight;
-
-          if (candidateCutY >= canvas.height) {
-            cutPoints.push(canvas.height);
-            break;
-          }
-
-          // Check if candidateCutY cuts through any element
-          let bestCutY = candidateCutY;
-          for (const box of avoidBoxes) {
-            if (box.top < candidateCutY && box.bottom > candidateCutY) {
-              // Element is crossed by the cut line!
-              // Cut safely above the element if the page still has at least 35% of content
-              if (box.top - currentY > maxPageCanvasHeight * 0.35) {
-                bestCutY = Math.max(currentY + 60, box.top - 6 * scale);
-                break;
-              }
-            }
-          }
-
-          // Guard against zero progress
-          if (bestCutY <= currentY + 50) {
-            bestCutY = candidateCutY;
-          }
-
-          cutPoints.push(bestCutY);
-          currentY = bestCutY;
-        }
-
-        const totalPages = cutPoints.length - 1;
-
-        for (let i = 0; i < totalPages; i++) {
-          const sliceTop = cutPoints[i];
-          const sliceBottom = cutPoints[i + 1];
-          const sliceHeight = sliceBottom - sliceTop;
-
-          if (sliceHeight <= 0) continue;
-
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceHeight;
-          const ctx = sliceCanvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-            ctx.drawImage(
-              canvas,
-              0, sliceTop, canvas.width, sliceHeight,
-              0, 0, canvas.width, sliceHeight
-            );
-          }
-
-          const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.98);
-          const slicePdfHeight = (sliceHeight * contentWidth) / canvas.width;
-
-          if (i > 0) {
-            pdf.addPage();
-          }
-          pdf.addImage(sliceData, 'JPEG', margin, margin, contentWidth, slicePdfHeight, undefined, 'FAST');
-        }
+      // If the rendered height exceeds 1 single A4 page, scale down proportionally so 100% of the content fits on 1 page!
+      if (renderHeight > printableHeight) {
+        renderHeight = printableHeight;
+        renderWidth = (imgWidth * renderHeight) / imgHeight;
       }
 
+      // Center on page
+      const posX = margin + (printableWidth - renderWidth) / 2;
+      const posY = margin + (printableHeight - renderHeight) / 2;
+
+      // Use lossless PNG so Bengali diacritics and ligatures are never blurred or artifacts introduced
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', posX, posY, renderWidth, renderHeight, undefined, 'FAST');
+
       pdf.save(filename);
-      setPdfSuccessMessage('পিডিএফ ফাইলটি সফলভাবে ডাউনলোড হয়েছে!');
+      setPdfSuccessMessage('১ পেইজের A4 সাইজ পিডিএফ সফলভাবে ডাউনলোড হয়েছে!');
       setTimeout(() => setPdfSuccessMessage(null), 4000);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
-      // Fallback: Notify and open browser print dialog
       showToast('পিডিএফ তৈরিতে ব্রাউজার প্রিন্ট ডায়ালগ ব্যবহার করা হচ্ছে...', 'info');
       window.print();
     } finally {
@@ -403,7 +351,9 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
               id="printable-schedule-document"
               className="bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-lg border border-slate-300 space-y-6 print:shadow-none print:border-none print:p-0 print:m-0"
               style={{
-                fontFamily: "'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif"
+                fontFamily: "'Hind Siliguri', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif",
+                letterSpacing: 'normal',
+                textRendering: 'optimizeLegibility',
               }}
             >
               {/* Document Header with Student Credentials */}
@@ -413,11 +363,11 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
                   <div>
                     <div className="flex items-center gap-2 text-slate-900 mb-1">
                       <GraduationCap className="w-6 h-6 text-purple-700" />
-                      <span className="text-xs font-black tracking-widest text-purple-800 uppercase">
+                      <span className="text-xs font-black tracking-normal text-purple-800 uppercase">
                         STUDENT STUDY PLANNER • শিক্ষাসূচি
                       </span>
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight">
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-normal">
                       সাপ্তাহিক পড়ার রুটিন ও টাস্ক শিডিউল
                     </h1>
                     <p className="text-xs text-slate-600 mt-0.5">
@@ -425,25 +375,24 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
                     </p>
                   </div>
 
-                  {/* Right: Student Profile Card */}
-                  <div className="bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs min-w-[240px]">
-                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
-                      <span className="font-bold text-slate-600">শিক্ষার্থী:</span>
-                      <span className="font-black text-slate-900">{studentName}</span>
-
-                      <span className="font-bold text-slate-600">শ্রেণি/বর্ষ:</span>
-                      <span className="font-bold text-slate-800">{studentClass}</span>
-
-                      <span className="font-bold text-slate-600">প্রতিষ্ঠান:</span>
-                      <span className="font-medium text-slate-800 truncate" title={studentInstitution}>
-                        {studentInstitution}
-                      </span>
-
-                      <span className="font-bold text-slate-600">তারিখ:</span>
-                      <span className="font-medium text-slate-700">
-                        {formatDhakaDateBengali(todayStr)}
-                      </span>
-                    </div>
+                  {/* Right: Student Profile Table */}
+                  <div className="border border-slate-300 rounded-lg overflow-hidden shrink-0 shadow-2xs">
+                    <table className="border-collapse text-xs bg-slate-50">
+                      <tbody>
+                        <tr className="border-b border-slate-300">
+                          <td className="py-1 px-2.5 font-bold text-slate-600 bg-slate-100 border-r border-slate-300">শিক্ষার্থী:</td>
+                          <td className="py-1 px-2.5 font-black text-slate-900 border-r border-slate-300">{studentName}</td>
+                          <td className="py-1 px-2.5 font-bold text-slate-600 bg-slate-100 border-r border-slate-300">শ্রেণি:</td>
+                          <td className="py-1 px-2.5 font-bold text-slate-800">{studentClass || '—'}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-1 px-2.5 font-bold text-slate-600 bg-slate-100 border-r border-slate-300">প্রতিষ্ঠান:</td>
+                          <td className="py-1 px-2.5 font-semibold text-slate-800 border-r border-slate-300 truncate max-w-[130px]" title={studentInstitution}>{studentInstitution || '—'}</td>
+                          <td className="py-1 px-2.5 font-bold text-slate-600 bg-slate-100 border-r border-slate-300">তারিখ:</td>
+                          <td className="py-1 px-2.5 font-black text-slate-900">{formatDhakaDateBengali(todayStr)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
@@ -462,7 +411,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
               {includeRoutine && (
                 <div className="pdf-section space-y-3.5 print-page-break-avoid">
                   <div className="flex items-center justify-between border-b-2 border-slate-300 pb-2">
-                    <h2 className="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                    <h2 className="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-normal">
                       <CalendarDays className="w-4 h-4 text-purple-700" />
                       সাপ্তাহিক পড়ার সময়সূচি (Weekly Study Routine)
                     </h2>
@@ -556,7 +505,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
               {includeTasks && (
                 <div className="pdf-section space-y-3.5 print-page-break-avoid">
                   <div className="flex items-center justify-between border-b-2 border-slate-300 pb-2">
-                    <h2 className="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                    <h2 className="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-normal">
                       <ListTodo className="w-4 h-4 text-purple-700" />
                       টাস্ক ও অ্যাসাইনমেন্ট তালিকা (Task Schedule Checklist)
                     </h2>
@@ -603,15 +552,15 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
                                 <td className="py-2.5 px-3.5 border border-slate-300 text-slate-800 font-medium text-xs">
                                   {sub?.name || 'সাধারণ'}
                                 </td>
-                                <td className="py-2.5 px-3.5 border border-slate-300 text-slate-700 whitespace-nowrap font-medium text-xs">
-                                  {task.due_date}
+                                <td className="py-2 px-3 border border-slate-300 text-slate-800 whitespace-nowrap font-bold text-xs">
+                                  <div>{formatDateBengaliShort(task.due_date)}</div>
                                   {task.due_time && (
-                                    <div className="text-[10px] text-slate-500 mt-0.5">
+                                    <div className="text-[10px] text-slate-500 font-normal mt-0.5">
                                       {formatTime12h(task.due_time, 'bn')}
                                     </div>
                                   )}
                                 </td>
-                                <td className="py-2.5 px-2.5 border border-slate-300 text-center whitespace-nowrap">
+                                <td className="py-2 px-2.5 border border-slate-300 text-center whitespace-nowrap">
                                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-block ${
                                     task.priority === 'high' 
                                       ? 'bg-rose-100 text-rose-800 border border-rose-300' 
@@ -622,7 +571,7 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
                                     {task.priority === 'high' ? 'জরুরি' : task.priority === 'medium' ? 'মাঝারি' : 'সাধারণ'}
                                   </span>
                                 </td>
-                                <td className="py-2.5 px-2.5 border border-slate-300 text-center whitespace-nowrap font-bold text-[10px]">
+                                <td className="py-2 px-2.5 border border-slate-300 text-center whitespace-nowrap font-bold text-[10px]">
                                   {isDone ? (
                                     <span className="text-emerald-700 font-bold">সম্পন্ন</span>
                                   ) : (
@@ -636,22 +585,21 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
                       </table>
                     </div>
                   ) : (
-                    <div className="p-5 text-center border border-dashed border-slate-300 rounded-lg text-slate-500 text-xs leading-relaxed">
+                    <div className="p-4 text-center border border-dashed border-slate-300 rounded-lg text-slate-500 text-xs leading-relaxed">
                       নির্বাচিত ফিল্টারে কোনো টাস্ক পাওয়া যায়নি।
                     </div>
                   )}
                 </div>
               )}
 
-              {/* 3. WEEKLY GOALS & NOTES SECTION (Lined for handwriting) */}
-              <div className="pdf-section space-y-2.5 pt-1 print-page-break-avoid">
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+              {/* 3. WEEKLY GOALS & NOTES SECTION */}
+              <div className="pdf-section space-y-1.5 pt-1 print-page-break-avoid">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-normal">
                   শিক্ষার্থীর সাপ্তাহিক লক্ষ্য ও বিশেষ নোট (Weekly Goals & Notes):
                 </h3>
-                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50/50 space-y-4">
-                  <div className="border-b border-dashed border-slate-300 h-6"></div>
-                  <div className="border-b border-dashed border-slate-300 h-6"></div>
-                  <div className="border-b border-dashed border-slate-300 h-6"></div>
+                <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50/50 flex items-center justify-between text-xs text-slate-600">
+                  <span>🎯 সাপ্তাহিক পড়াশোনার লক্ষ্য পূরণ করুন এবং নিয়মিত রিভিশন নিশ্চিত করুন।</span>
+                  <span className="text-[11px] text-slate-400 font-medium">হাতে লেখার জন্য নোট রাখুন ✍️</span>
                 </div>
               </div>
 

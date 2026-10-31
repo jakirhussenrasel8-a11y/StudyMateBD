@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 import { formatTime12h } from '../../lib/timeFormat';
+import { formatDhakaDateBengali, formatDateBengaliShort } from '../../lib/dateUtils';
 
 interface ExamsViewProps {
   onOpenCreate: () => void;
@@ -284,10 +285,17 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onOpenCreate }) => {
                   {/* Countdown Highlight & Info */}
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                     <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
-                      <div className="flex items-center gap-1.5 font-medium">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{exam.exam_date}</span>
-                        {exam.exam_time && <span>({formatTime12h(exam.exam_time, 'bn')})</span>}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-800 font-extrabold text-xs">
+                          <Calendar className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                          <span>{formatDhakaDateBengali(exam.exam_date)}</span>
+                        </span>
+                        {exam.exam_time && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700">
+                            <Clock className="w-3.5 h-3.5 text-slate-500" />
+                            <span>{formatTime12h(exam.exam_time, 'bn')}</span>
+                          </span>
+                        )}
                       </div>
                       {exam.room_or_location && (
                         <div className="flex items-center gap-1.5">
@@ -351,8 +359,8 @@ export const ExamsView: React.FC<ExamsViewProps> = ({ onOpenCreate }) => {
                     <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
                       {exam.title}
                     </h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {subject?.name} • সম্পন্ন: {exam.exam_date}
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold mt-0.5">
+                      {subject?.name} • সম্পন্ন: {formatDateBengaliShort(exam.exam_date)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1">

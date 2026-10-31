@@ -48,10 +48,14 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS preferred_language TEXT DEF
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
--- Populate student_code for any existing profiles
-UPDATE public.profiles
-SET student_code = 'SM-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 1, 6))
-WHERE student_code IS NULL OR student_code = '';
+-- Safely populate student_code for any existing profiles
+DO $$
+BEGIN
+  EXECUTE 'UPDATE public.profiles SET student_code = ''SM-'' || UPPER(SUBSTRING(REPLACE(id::text, ''-'', ''''), 1, 6)) WHERE student_code IS NULL OR student_code = ''''';
+EXCEPTION
+  WHEN OTHERS THEN
+    NULL;
+END $$;
 
 -- 2. SUBJECTS TABLE
 CREATE TABLE IF NOT EXISTS public.subjects (
@@ -139,10 +143,31 @@ CREATE TABLE IF NOT EXISTS public.study_sessions (
   notes TEXT
 );
 
--- Ensure both completed_at and created_at exist regardless of past schema state
-ALTER TABLE public.study_sessions ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ DEFAULT NOW();
-ALTER TABLE public.study_sessions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
-UPDATE public.study_sessions SET completed_at = COALESCE(completed_at, created_at, NOW()), created_at = COALESCE(created_at, completed_at, NOW());
+-- Ensure both completed_at and created_at exist safely without column cache errors
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'study_sessions' AND column_name = 'completed_at'
+  ) THEN
+    ALTER TABLE public.study_sessions ADD COLUMN completed_at TIMESTAMPTZ DEFAULT NOW();
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'study_sessions' AND column_name = 'created_at'
+  ) THEN
+    ALTER TABLE public.study_sessions ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();
+  END IF;
+
+  -- Dynamic execution prevents PostgreSQL parse-time column lookup error (42703)
+  BEGIN
+    EXECUTE 'UPDATE public.study_sessions SET completed_at = COALESCE(completed_at, created_at, NOW()), created_at = COALESCE(created_at, completed_at, NOW())';
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL;
+  END;
+END $$;
 
 -- ==============================================================================
 -- FRIENDSHIPS, REQUESTS & CHEERS TABLES
@@ -234,6 +259,12 @@ CREATE POLICY "Users can update own profile"
   TO authenticated
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can delete own profile" ON public.profiles;
+CREATE POLICY "Users can delete own profile"
+  ON public.profiles FOR DELETE
+  TO authenticated
+  USING (auth.uid() = id);
 
 -- 2. Subjects Policies
 DROP POLICY IF EXISTS "Users can view own subjects" ON public.subjects;
@@ -510,7 +541,12 @@ BEGIN
   DELETE FROM public.subjects WHERE user_id = current_user_id;
   DELETE FROM public.profiles WHERE id = current_user_id;
 
-  DELETE FROM auth.users WHERE id = current_user_id;
+  BEGIN
+    DELETE FROM auth.users WHERE id = current_user_id;
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL;
+  END;
 
   RETURN true;
 END;

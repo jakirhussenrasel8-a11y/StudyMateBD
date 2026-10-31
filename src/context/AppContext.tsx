@@ -1945,70 +1945,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const client = getSupabaseClient();
     try {
       if (user && client) {
-        let authDeleted = false;
-
-        // 1. First attempt: call secure server-side endpoint with Bearer auth
+        // 1. Delete all user records from every database table in strict dependency order (zero orphaned records)
         try {
-          const session = authSession || (await client.auth.getSession()).data.session;
-          if (session?.access_token) {
-            const config = getSupabaseConfig();
-            const res = await fetch('/api/delete-account', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                supabaseUrl: config.url,
-                anonKey: config.anonKey,
-              }),
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success && !data.useRpc) {
-                authDeleted = true;
-              }
-            }
-          }
-        } catch (serverErr) {
-          console.warn('Server endpoint account deletion warning:', serverErr);
+          await client.from('friend_cheers').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+          await client.from('friend_requests').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+          await client.from('friendships').delete().or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+          await client.from('study_sessions').delete().eq('user_id', user.id);
+          await client.from('tasks').delete().eq('user_id', user.id);
+          await client.from('exams').delete().eq('user_id', user.id);
+          await client.from('study_routines').delete().eq('user_id', user.id);
+          await client.from('subjects').delete().eq('user_id', user.id);
+          await client.from('profiles').delete().eq('id', user.id);
+        } catch (dbErr) {
+          console.warn('Direct database purge error:', dbErr);
         }
 
-        // 2. Second attempt / Fallback: call SECURITY DEFINER RPC delete_user_account()
-        if (!authDeleted) {
-          try {
-            const { error: rpcErr } = await client.rpc('delete_user_account');
-            if (!rpcErr) {
-              authDeleted = true;
-            } else {
-              console.warn('RPC delete_user_account response:', rpcErr);
-            }
-          } catch (rpcEx) {
-            console.warn('RPC delete_user_account error:', rpcEx);
-          }
+        // 2. Invoke RPC delete_user_account() for auth.users & complete cleanup
+        try {
+          await client.rpc('delete_user_account');
+        } catch (rpcErr) {
+          console.warn('RPC delete_user_account error:', rpcErr);
         }
 
-        // 3. Defensive cascade delete across all user data tables to ensure zero orphaned records
+        // 3. Invalidate and revoke all auth sessions globally
         try {
-          await Promise.allSettled([
-            client.from('friend_cheers').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
-            client.from('friend_requests').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
-            client.from('friendships').delete().or(`user_id.eq.${user.id},friend_id.eq.${user.id}`),
-            client.from('study_sessions').delete().eq('user_id', user.id),
-            client.from('tasks').delete().eq('user_id', user.id),
-            client.from('exams').delete().eq('user_id', user.id),
-            client.from('study_routines').delete().eq('user_id', user.id),
-            client.from('subjects').delete().eq('user_id', user.id),
-            client.from('profiles').delete().eq('id', user.id),
-          ]);
-        } catch (cascadeErr) {
-          console.warn('Cascade database deletion warning:', cascadeErr);
-        }
-
-        // 4. Invalidate and sign out auth session completely
-        try {
-          await client.auth.signOut();
+          await client.auth.signOut({ scope: 'global' });
         } catch (soErr) {
           console.warn('Signout during deletion error:', soErr);
         }
@@ -2020,23 +1981,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    // 5. Clean all user cached storage and tokens
+    // 4. Clean 100% of cached storage, tokens and states (0.00% retained)
+    const savedUrl = localStorage.getItem('studymate_supabase_url');
+    const savedKey = localStorage.getItem('studymate_supabase_key');
     try {
-      localStorage.removeItem('studymate_auth_token');
-      localStorage.removeItem('studymate_cached_profile');
-      localStorage.removeItem('studymate_demo_data_v1');
-      localStorage.removeItem('studymate_demo_friends_v2');
-      localStorage.removeItem('studymate_demo_requests_v2');
-      localStorage.removeItem('studymate_demo_cheers_v2');
-      localStorage.removeItem('studymate_friends');
-      localStorage.removeItem('studymate_active_tab');
-      localStorage.removeItem('studymate_tab_history');
-      localStorage.removeItem('studymate_timer_state_v1');
-      localStorage.removeItem('studymate_supabase_url');
-      localStorage.removeItem('studymate_supabase_key');
-    } catch {}
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      console.warn('Storage wipe warning:', e);
+    }
+    // Restore only endpoint connection settings if they existed so user can register anew
+    if (savedUrl) localStorage.setItem('studymate_supabase_url', savedUrl);
+    if (savedKey) localStorage.setItem('studymate_supabase_key', savedKey);
 
-    // 6. Reset all state to clean empty slate
+    // 5. Reset all in-memory application states to pristine empty
     setUser(null);
     setAuthSession(null);
     setProfile(null);

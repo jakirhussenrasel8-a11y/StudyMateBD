@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 import { getSixPeriodGreeting, formatTime12h } from '../../lib/timeFormat';
+import { formatDhakaDateBengali, formatRelativeDateBengali, formatDateBengaliShort } from '../../lib/dateUtils';
 import { StudentAvatar } from '../common/StudentAvatar';
 import { useDailyBengaliQuote } from '../../hooks/useDailyBengaliQuote';
 import { ExportPdfModal } from '../export/ExportPdfModal';
@@ -245,13 +246,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h1 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight">
               {displayName}
             </h1>
-            {/* Class & Institution Tags */}
-            <div className="flex items-center gap-2 mt-1 flex-wrap text-xs">
+            {/* Class, Institution & Today's Date Tags */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
               <span className="px-2.5 py-0.5 rounded-full bg-lavender-100 text-charcoal-800 dark:bg-charcoal-800 dark:text-lavender-200 font-bold border border-lavender-200/60 dark:border-charcoal-700">
                 {displayClass}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-[#FFF9E5] text-charcoal-800 dark:bg-charcoal-800 dark:text-amber-300 font-semibold border border-[#FFE49A]/60 dark:border-charcoal-700 truncate max-w-[200px]">
                 {displayInstitution}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white dark:bg-charcoal-800 text-charcoal-900 dark:text-white font-extrabold border-2 border-lavender-300 dark:border-lavender-700 shadow-xs">
+                <Calendar className="w-3.5 h-3.5 text-lavender-600 dark:text-lavender-400 shrink-0" />
+                <span>{formatDhakaDateBengali(todayStr)}</span>
               </span>
             </div>
           </div>
@@ -287,9 +292,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {dailyQuoteCategory}
             </span>
           </div>
-          <span className="text-[11px] font-medium text-charcoal-400 dark:text-slate-400">
-            {formattedDhakaDate}
-          </span>
         </div>
 
         <blockquote className="my-1.5 pl-3 border-l-3 border-lavender-400">
@@ -309,9 +311,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h2 className="text-2xl sm:text-3xl font-black text-charcoal-900 dark:text-white tracking-tight">
             {language === 'bn' ? 'আজকের অগ্রগতি ও পড়াশোনা' : 'Your Progress Today'}
           </h2>
-          <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 font-medium mt-0.5">
-            {formattedToday}
-          </p>
         </div>
 
         {/* Quick Focus Button and Export PDF button */}
@@ -466,8 +465,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
             </div>
 
-            <div className="mt-3 pt-3 border-t border-pastelBlue-200/80 dark:border-pastelBlue-400/20 text-[11px] text-charcoal-600 dark:text-slate-300 font-medium truncate">
-              {upcomingExams[0] ? `${upcomingExams[0].title} (${getDaysLeft(upcomingExams[0].exam_date)} দিন বাকি)` : 'কোনো পরীক্ষা শিডিউল নেই'}
+            <div className="mt-3 pt-3 border-t border-pastelBlue-200/80 dark:border-pastelBlue-400/20 text-xs text-charcoal-700 dark:text-slate-300 font-medium">
+              {upcomingExams[0] ? (
+                <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                  <span className="font-black text-charcoal-900 dark:text-white truncate max-w-[140px]">
+                    {upcomingExams[0].title}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] border border-blue-300 dark:border-blue-800 shrink-0">
+                    📅 {formatDateBengaliShort(upcomingExams[0].exam_date)} ({getDaysLeft(upcomingExams[0].exam_date)} দিন বাকি)
+                  </span>
+                </div>
+              ) : 'কোনো পরীক্ষা শিডিউল নেই'}
             </div>
           </div>
         </div>
@@ -805,9 +813,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               {subject.name}
                             </span>
                           )}
-                          {task.due_date && (
-                            <span>জমা: {task.due_date === todayStr ? 'আজ' : task.due_date}</span>
-                          )}
+                          {task.due_date && (() => {
+                            const rel = formatRelativeDateBengali(task.due_date, todayStr);
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black tracking-tight ${
+                                rel.status === 'today'
+                                  ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                                  : rel.status === 'overdue'
+                                    ? 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-800'
+                                    : rel.status === 'tomorrow'
+                                      ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+                                      : 'bg-lavender-100 text-charcoal-900 dark:bg-charcoal-800 dark:text-lavender-200 border border-lavender-200 dark:border-charcoal-700'
+                              }`}>
+                                <Calendar className="w-3 h-3 shrink-0" />
+                                <span>{rel.badgeText}</span>
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>

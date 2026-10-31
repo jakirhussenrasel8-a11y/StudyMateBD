@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { getTodayDateString } from '../../lib/storage';
 import { formatTime12h } from '../../lib/timeFormat';
+import { formatRelativeDateBengali, formatDateBengaliShort } from '../../lib/dateUtils';
 import { ExportPdfModal } from '../export/ExportPdfModal';
 
 interface TasksViewProps {
@@ -427,11 +428,26 @@ export const TasksView: React.FC<TasksViewProps> = ({ onOpenCreate }) => {
                         </span>
                       )}
 
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>{task.due_date}</span>
-                        {task.due_time && <span>({formatTime12h(task.due_time, language)})</span>}
-                      </span>
+                      {(() => {
+                        const rel = formatRelativeDateBengali(task.due_date, todayStr);
+                        return (
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-black tracking-tight ${
+                            rel.status === 'today'
+                              ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800'
+                              : rel.status === 'overdue'
+                                ? 'bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-300 dark:border-rose-800'
+                                : rel.status === 'tomorrow'
+                                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800'
+                                  : 'bg-lavender-100 text-charcoal-900 dark:bg-charcoal-800 dark:text-lavender-200 border border-lavender-200 dark:border-charcoal-700'
+                          }`}>
+                            <Calendar className="w-3.5 h-3.5 shrink-0" />
+                            <span>{rel.badgeText}</span>
+                            {task.due_time && (
+                              <span className="opacity-80">({formatTime12h(task.due_time, language)})</span>
+                            )}
+                          </span>
+                        );
+                      })()}
 
                       {task.estimated_minutes && (
                         <span className="flex items-center gap-1">

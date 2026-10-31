@@ -49,7 +49,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenSet
 
     if (!supabaseConfig.isConfigured) {
       setErrorMessage(
-        'সুপাবেজ ক্রেডেনশিয়াল এখনো সেট করা হয়নি। অনুগ্রহ করে সেটিংসে গিয়ে Supabase Project URL এবং Anon Key দিন।'
+        'সার্ভারের সাথে এই মুহূর্তে সংযোগ স্থাপন করা সম্ভব হয়নি। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন বা অফলাইনে স্টাডিমেট ব্যবহার করুন।'
       );
       return;
     }
@@ -146,17 +146,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenSet
             <div className="m-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
               <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
               <div>
-                <p className="font-semibold">Supabase ক্লাউড ডেটাবেস এখনো সেটআপ করা হয়নি</p>
+                <p className="font-semibold">ক্লাউড ডেটাবেস সংযোগ পাওয়া যায়নি</p>
                 <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-300/80">
-                  আপনি নিশ্চিন্তে নিচের <span className="font-bold underline">ডেমো মোড</span> চালিয়ে যেতে পারেন, অথবা বিনামূল্যে ক্লাউড চালু করতে সেটিংসে যান।
+                  চিন্তার কিছু নেই! আপনি অ্যাপের লোকাল মোডে আপনার সকল পড়াশোনার পরিকল্পনা ও রুটিন সংরক্ষণ করতে পারবেন।
                 </p>
-                <button
-                  type="button"
-                  onClick={() => { onClose(); onOpenSettings(); }}
-                  className="mt-1.5 text-xs font-bold text-amber-900 dark:text-amber-200 underline cursor-pointer"
-                >
-                  সেটিংস থেকে Supabase যুক্ত করুন &rarr;
-                </button>
               </div>
             </div>
           )}
@@ -189,7 +182,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenSet
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="যেমন: Rasu IT"
+                    placeholder="যেমন: মোঃ সাকিব আহমেদ"
                     className="w-full pl-10 pr-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-rose-500 min-h-[44px]"
                   />
                 </div>

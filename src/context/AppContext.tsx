@@ -7,6 +7,10 @@ import {
   StudySession, 
   Profile, 
   Friend,
+  FriendRequest,
+  FriendCheer,
+  CheerType,
+  FriendLiveStats,
   Language, 
   Theme, 
   NavTab, 
@@ -125,12 +129,25 @@ interface AppContextType {
 
   recordStudySession: (data: { subject_id?: string; duration_minutes: number; session_type: 'pomodoro' | 'short_break' | 'long_break' | 'manual'; notes?: string }) => Promise<boolean>;
 
-  // Friends & Metrics
+  // Friends, Requests, Cheers & Live Stats
   friends: Friend[];
-  addFriend: (data: { email: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }) => Promise<boolean>;
+  friendRequests: FriendRequest[];
+  friendCheers: FriendCheer[];
+  unreadCheersCount: number;
+  pendingRequestsCount: number;
+  sendFriendRequest: (data: { student_code?: string; email?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }) => Promise<{ success: boolean; message?: string }>;
+  acceptFriendRequest: (requestId: string) => Promise<boolean>;
+  declineFriendRequest: (requestId: string) => Promise<boolean>;
+  cancelFriendRequest: (requestId: string) => Promise<boolean>;
   removeFriend: (id: string) => Promise<boolean>;
+  sendFriendCheer: (receiverId: string, cheerType: CheerType, message?: string) => Promise<boolean>;
+  markCheerAsRead: (cheerId: string) => void;
+  markAllCheersAsRead: () => void;
   sendKudosToFriend: (friendId: string) => void;
-  lookupStudentByEmail: (email: string) => Promise<{ name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null>;
+  lookupStudentByCode: (code: string) => Promise<{ id?: string; student_code?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null>;
+  lookupStudentByEmail: (email: string) => Promise<{ id?: string; student_code?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null>;
+  refreshFriendsData: () => Promise<void>;
+  addFriend: (data: { student_code?: string; email?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }) => Promise<boolean>;
 
   // Task-linked Dedicated Timer
   activeTimerTaskId: string | null;
@@ -161,6 +178,8 @@ interface AppContextType {
 }
 
 const INITIAL_DEMO_FRIENDS: Friend[] = [];
+const INITIAL_DEMO_REQUESTS: FriendRequest[] = [];
+const INITIAL_DEMO_CHEERS: FriendCheer[] = [];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -185,7 +204,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [profile, setProfile] = useState<Profile | null>(() => {
     try {
       const cached = localStorage.getItem('studymate_cached_profile');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.full_name !== 'Rasu IT' && parsed.full_name !== 'তানভীর আহমেদ') {
+          return parsed;
+        }
+      }
     } catch {}
     return null;
   });
@@ -193,7 +217,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Demo mode is active if user is not logged in OR explicitly enabled
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    // If not configured, default to true
     return !getSupabaseConfig().isConfigured;
   });
 
@@ -205,11 +228,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [friends, setFriends] = useState<Friend[]>(() => {
     try {
-      const saved = localStorage.getItem('studymate_friends');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('studymate_demo_friends_v2') || localStorage.getItem('studymate_friends');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && !parsed.some(f => f.id === 'demo_frnd_fahim')) {
+          return parsed;
+        }
+      }
     } catch {}
     return [];
   });
+
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem('studymate_demo_requests_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && !parsed.some(r => r.id === 'demo_req_sumaiya')) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return [];
+  });
+
+  const [friendCheers, setFriendCheers] = useState<FriendCheer[]>(() => {
+    try {
+      const saved = localStorage.getItem('studymate_demo_cheers_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && !parsed.some(c => c.id === 'demo_cheer_1')) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return [];
+  });
+
+  const unreadCheersCount = useMemo(() => {
+    const myId = user?.id || profile?.id || 'demo-user-student-bd';
+    return friendCheers.filter(c => (c.receiver_id === myId || c.receiver_id === 'demo-user-student-bd') && !c.is_read).length;
+  }, [friendCheers, user, profile]);
+
+  const pendingRequestsCount = useMemo(() => {
+    return friendRequests.filter(r => r.direction === 'incoming' && r.status === 'pending').length;
+  }, [friendRequests]);
+
   const [isLoadingData, setIsLoadingData] = useState(false);
 
   // Automatic Bangladesh Standard Time (Asia/Dhaka, UTC+06:00) Midnight Tracker
@@ -420,30 +484,168 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           client.from('profiles').upsert(initialUserProf, { onConflict: 'id' }).then();
         }
 
-        // Friends sync
-        const [friendRes] = await Promise.all([
-          client.from('friendships').select('*').order('created_at', { ascending: false })
-        ]);
-        if (friendRes.data && friendRes.data.length > 0) {
-          const cloudFriends: Friend[] = friendRes.data.map(f => ({
-            id: f.id,
-            user_id: f.user_id,
-            friend_email: f.friend_email,
-            friend_name: f.friend_name || f.friend_email.split('@')[0],
-            student_class: f.student_class || 'একাদশ শ্রেণি',
-            institution: f.institution || 'শিক্ষা প্রতিষ্ঠান',
-            today_minutes: Math.floor(Math.random() * 180) + 60,
-            weekly_minutes: Math.floor(Math.random() * 900) + 600,
-            study_streak: Math.floor(Math.random() * 10) + 1,
-            completed_tasks: Math.floor(Math.random() * 6) + 1,
-            status: f.status || 'accepted',
-            last_studied_subject: 'উচ্চতর গণিত',
-            last_active: 'ক্লাউড সিঙ্কড',
-          }));
-          setFriends(cloudFriends);
-          try {
-            localStorage.setItem('studymate_friends', JSON.stringify(cloudFriends));
-          } catch {}
+        // Real Cloud Friends, Requests & Cheers sync
+        try {
+          const { data: friendships } = await client
+            .from('friendships')
+            .select('id, user_id, friend_id, created_at')
+            .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+          if (friendships && friendships.length > 0) {
+            const friendUserIds = Array.from(new Set(friendships.map(f => f.user_id === user.id ? f.friend_id : f.user_id)));
+            const { data: profiles } = await client
+              .from('profiles')
+              .select('id, email, full_name, student_class, institution, gender')
+              .in('id', friendUserIds);
+
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            const { data: sessionsData } = await client
+              .from('study_sessions')
+              .select('user_id, subject_id, duration_minutes, completed_at')
+              .in('user_id', friendUserIds)
+              .gte('completed_at', oneWeekAgo.toISOString());
+
+            const { data: tasksData } = await client
+              .from('tasks')
+              .select('user_id, status')
+              .in('user_id', friendUserIds)
+              .eq('status', 'completed');
+
+            const { data: subjectsData } = await client
+              .from('subjects')
+              .select('id, user_id, name')
+              .in('user_id', friendUserIds);
+
+            const todayStr = getDhakaDateString();
+
+            const cloudFriends: Friend[] = friendships.map(f => {
+              const friendUserId = f.user_id === user.id ? f.friend_id : f.user_id;
+              const p = profiles?.find(pr => pr.id === friendUserId);
+              const friendSessions = (sessionsData || []).filter(s => s.user_id === friendUserId);
+              const friendTasks = (tasksData || []).filter(t => t.user_id === friendUserId);
+              
+              const todayMins = friendSessions
+                .filter(s => s.completed_at && s.completed_at.startsWith(todayStr))
+                .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+
+              const weeklyMins = friendSessions
+                .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+
+              const subjectTimeMap: Record<string, number> = {};
+              friendSessions.forEach(s => {
+                if (s.subject_id) {
+                  subjectTimeMap[s.subject_id] = (subjectTimeMap[s.subject_id] || 0) + s.duration_minutes;
+                }
+              });
+              let topSubjectId = '';
+              let maxTime = 0;
+              Object.entries(subjectTimeMap).forEach(([sId, time]) => {
+                if (time > maxTime) {
+                  maxTime = time;
+                  topSubjectId = sId;
+                }
+              });
+              const topSubObj = subjectsData?.find(sub => sub.id === topSubjectId);
+
+              const sessionDays = new Set(
+                friendSessions.map(s => s.completed_at ? s.completed_at.split('T')[0] : '')
+              );
+              const streakCount = sessionDays.size;
+
+              return {
+                id: f.id,
+                user_id: user.id,
+                friend_email: p?.email || 'student@example.com',
+                friend_name: p?.full_name || p?.email?.split('@')[0] || 'সহপাঠী',
+                student_class: p?.student_class || 'একাদশ শ্রেণি',
+                institution: p?.institution || 'শিক্ষা প্রতিষ্ঠান',
+                gender: (p?.gender as any) || 'male',
+                today_minutes: todayMins,
+                weekly_minutes: weeklyMins,
+                study_streak: Math.max(streakCount, 1),
+                completed_tasks: friendTasks.length,
+                status: 'accepted',
+                last_studied_subject: topSubObj?.name || 'পড়াশোনা চলছে',
+                last_active: 'ক্লাউড সিঙ্কড',
+              };
+            });
+            setFriends(cloudFriends);
+            try {
+              localStorage.setItem('studymate_friends', JSON.stringify(cloudFriends));
+            } catch {}
+          }
+
+          // Fetch friend requests
+          const { data: requestsData } = await client
+            .from('friend_requests')
+            .select('*')
+            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+            .order('created_at', { ascending: false });
+
+          if (requestsData) {
+            const participantIds = Array.from(new Set(requestsData.flatMap(r => [r.sender_id, r.receiver_id])));
+            const { data: pProfiles } = await client
+              .from('profiles')
+              .select('id, email, full_name, student_class, institution, gender')
+              .in('id', participantIds);
+
+            const mappedRequests: FriendRequest[] = requestsData.map(r => {
+              const isIncoming = r.receiver_id === user.id;
+              const senderProf = pProfiles?.find(p => p.id === r.sender_id);
+              const receiverProf = pProfiles?.find(p => p.id === r.receiver_id);
+              return {
+                id: r.id,
+                sender_id: r.sender_id,
+                receiver_id: r.receiver_id,
+                sender_name: senderProf?.full_name || senderProf?.email?.split('@')[0] || 'সহপাঠী',
+                sender_email: senderProf?.email || '',
+                sender_class: senderProf?.student_class,
+                sender_institution: senderProf?.institution,
+                sender_gender: senderProf?.gender as any,
+                receiver_name: receiverProf?.full_name || receiverProf?.email?.split('@')[0],
+                receiver_email: receiverProf?.email,
+                status: r.status,
+                created_at: r.created_at,
+                direction: isIncoming ? 'incoming' : 'outgoing',
+              };
+            });
+            setFriendRequests(mappedRequests);
+          }
+
+          // Fetch friend cheers
+          const { data: cheersData } = await client
+            .from('friend_cheers')
+            .select('*')
+            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+          if (cheersData) {
+            const senders = Array.from(new Set(cheersData.map(c => c.sender_id)));
+            const { data: cheerProfiles } = await client
+              .from('profiles')
+              .select('id, full_name, email, gender')
+              .in('id', senders);
+
+            const mappedCheers: FriendCheer[] = cheersData.map(c => {
+              const sProf = cheerProfiles?.find(p => p.id === c.sender_id);
+              return {
+                id: c.id,
+                sender_id: c.sender_id,
+                receiver_id: c.receiver_id,
+                sender_name: sProf?.full_name || sProf?.email?.split('@')[0] || 'সহপাঠী',
+                sender_gender: sProf?.gender as any,
+                cheer_type: c.cheer_type as CheerType,
+                message: c.message,
+                is_read: c.is_read,
+                created_at: c.created_at,
+              };
+            });
+            setFriendCheers(mappedCheers);
+          }
+        } catch (fErr) {
+          console.warn('Friends cloud sync warning:', fErr);
         }
       } catch (err: unknown) {
         console.error('Failed to load cloud data from Supabase:', err);
@@ -461,11 +663,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setExams(demo.exams || []);
       setSessions(demo.sessions || []);
       setProfile(demo.profile || {
-        id: 'demo-user-student-bd',
-        email: 'rasu.it@example.com',
-        full_name: 'Rasu IT',
-        student_class: "Hon's 3rd Year",
-        institution: 'Maulvibazar Govt. College',
+        id: 'guest-student-bd',
+        email: 'student@example.com',
+        full_name: 'নতুন শিক্ষার্থী',
+        student_class: '',
+        institution: '',
         target_study_hours_per_day: 5,
         preferred_language: 'bn',
         created_at: new Date().toISOString(),
@@ -1122,98 +1324,508 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isDemoMode, user, profile, language, subjects, tasks, routines, exams, sessions, syncDemoStorage, showToast]);
 
-  // Friends & Metrics Actions
-  const lookupStudentByEmail = useCallback(async (email: string): Promise<{ name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null> => {
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) return null;
+  // Friends, Requests, Cheers & Live Metrics
+  const refreshFriendsData = useCallback(async () => {
+    const client = getSupabaseClient();
+    if (!client || !user) return;
+    try {
+      // 1. Fetch friendships
+      const { data: friendships, error: fErr } = await client
+        .from('friendships')
+        .select('id, user_id, friend_id, created_at')
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+
+      if (!fErr && friendships && friendships.length > 0) {
+        const friendUserIds = Array.from(new Set(friendships.map(f => f.user_id === user.id ? f.friend_id : f.user_id)));
+        
+        // Fetch profiles
+        const { data: profiles } = await client
+          .from('profiles')
+          .select('id, email, full_name, student_class, institution, gender')
+          .in('id', friendUserIds);
+
+        // Fetch study sessions in last 7 days for stats
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const { data: sessionsData } = await client
+          .from('study_sessions')
+          .select('user_id, subject_id, duration_minutes, completed_at')
+          .in('user_id', friendUserIds)
+          .gte('completed_at', oneWeekAgo.toISOString());
+
+        // Fetch completed tasks
+        const { data: tasksData } = await client
+          .from('tasks')
+          .select('user_id, status')
+          .in('user_id', friendUserIds)
+          .eq('status', 'completed');
+
+        // Fetch subjects for name mapping
+        const { data: subjectsData } = await client
+          .from('subjects')
+          .select('id, user_id, name')
+          .in('user_id', friendUserIds);
+
+        const todayStr = getDhakaDateString();
+
+        const mappedFriends: Friend[] = friendships.map(f => {
+          const friendUserId = f.user_id === user.id ? f.friend_id : f.user_id;
+          const p = profiles?.find(pr => pr.id === friendUserId);
+          const friendSessions = (sessionsData || []).filter(s => s.user_id === friendUserId);
+          const friendTasks = (tasksData || []).filter(t => t.user_id === friendUserId);
+          
+          const todayMins = friendSessions
+            .filter(s => s.completed_at && s.completed_at.startsWith(todayStr))
+            .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+
+          const weeklyMins = friendSessions
+            .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+
+          // Find top studied subject
+          const subjectTimeMap: Record<string, number> = {};
+          friendSessions.forEach(s => {
+            if (s.subject_id) {
+              subjectTimeMap[s.subject_id] = (subjectTimeMap[s.subject_id] || 0) + s.duration_minutes;
+            }
+          });
+          let topSubjectId = '';
+          let maxTime = 0;
+          Object.entries(subjectTimeMap).forEach(([sId, time]) => {
+            if (time > maxTime) {
+              maxTime = time;
+              topSubjectId = sId;
+            }
+          });
+          const topSubObj = subjectsData?.find(sub => sub.id === topSubjectId);
+
+          // Calculate streak
+          const sessionDays = new Set(
+            friendSessions.map(s => s.completed_at ? s.completed_at.split('T')[0] : '')
+          );
+          const streakCount = sessionDays.size;
+
+          return {
+            id: f.id,
+            user_id: user.id,
+            friend_email: p?.email || 'student@example.com',
+            friend_name: p?.full_name || p?.email?.split('@')[0] || 'সহপাঠী',
+            student_class: p?.student_class || 'একাদশ শ্রেণি',
+            institution: p?.institution || 'শিক্ষা প্রতিষ্ঠান',
+            gender: (p?.gender as any) || 'male',
+            today_minutes: todayMins,
+            weekly_minutes: weeklyMins,
+            study_streak: Math.max(streakCount, 1),
+            completed_tasks: friendTasks.length,
+            status: 'accepted',
+            last_studied_subject: topSubObj?.name || 'পড়াশোনা চলছে',
+            last_active: 'ক্লাউড সিঙ্কড',
+          };
+        });
+
+        setFriends(mappedFriends);
+        try {
+          localStorage.setItem('studymate_friends', JSON.stringify(mappedFriends));
+        } catch {}
+      }
+
+      // 2. Fetch friend requests
+      const { data: requestsData } = await client
+        .from('friend_requests')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (requestsData) {
+        const participantIds = Array.from(new Set(requestsData.flatMap(r => [r.sender_id, r.receiver_id])));
+        const { data: pProfiles } = await client
+          .from('profiles')
+          .select('id, email, full_name, student_class, institution, gender')
+          .in('id', participantIds);
+
+        const mappedRequests: FriendRequest[] = requestsData.map(r => {
+          const isIncoming = r.receiver_id === user.id;
+          const senderProf = pProfiles?.find(p => p.id === r.sender_id);
+          const receiverProf = pProfiles?.find(p => p.id === r.receiver_id);
+          return {
+            id: r.id,
+            sender_id: r.sender_id,
+            receiver_id: r.receiver_id,
+            sender_name: senderProf?.full_name || senderProf?.email?.split('@')[0] || 'সহপাঠী',
+            sender_email: senderProf?.email || '',
+            sender_class: senderProf?.student_class,
+            sender_institution: senderProf?.institution,
+            sender_gender: senderProf?.gender as any,
+            receiver_name: receiverProf?.full_name || receiverProf?.email?.split('@')[0],
+            receiver_email: receiverProf?.email,
+            status: r.status,
+            created_at: r.created_at,
+            direction: isIncoming ? 'incoming' : 'outgoing',
+          };
+        });
+
+        setFriendRequests(mappedRequests);
+      }
+
+      // 3. Fetch friend cheers
+      const { data: cheersData } = await client
+        .from('friend_cheers')
+        .select('*')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (cheersData) {
+        const senders = Array.from(new Set(cheersData.map(c => c.sender_id)));
+        const { data: cheerProfiles } = await client
+          .from('profiles')
+          .select('id, full_name, email, gender')
+          .in('id', senders);
+
+        const mappedCheers: FriendCheer[] = cheersData.map(c => {
+          const sProf = cheerProfiles?.find(p => p.id === c.sender_id);
+          return {
+            id: c.id,
+            sender_id: c.sender_id,
+            receiver_id: c.receiver_id,
+            sender_name: sProf?.full_name || sProf?.email?.split('@')[0] || 'সহপাঠী',
+            sender_gender: sProf?.gender as any,
+            cheer_type: c.cheer_type as CheerType,
+            message: c.message,
+            is_read: c.is_read,
+            created_at: c.created_at,
+          };
+        });
+
+        setFriendCheers(mappedCheers);
+      }
+    } catch (err) {
+      console.warn('Error refreshing friends data:', err);
+    }
+  }, [user]);
+
+  const lookupStudentByCode = useCallback(async (code: string): Promise<{ id?: string; student_code?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null> => {
+    const clean = code.trim().toUpperCase();
+    if (!clean || clean.length < 3) return null;
+
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client
           .from('profiles')
-          .select('full_name, student_class, institution')
-          .eq('email', cleanEmail)
+          .select('id, student_code, email, full_name, student_class, institution, gender')
+          .or(`student_code.ilike.${clean},id.eq.${clean.toLowerCase()}`)
           .maybeSingle();
+
         if (data && !error) {
           return {
+            id: data.id,
+            student_code: data.student_code || ('SM-' + data.id.replace(/-/g, '').substring(0, 6).toUpperCase()),
             name: data.full_name || undefined,
             student_class: data.student_class || undefined,
             institution: data.institution || undefined,
-            gender: 'male',
+            gender: (data.gender as 'male' | 'female') || 'male',
           };
         }
       } catch (e) {
-        console.warn('Student email lookup failed:', e);
+        console.warn('Student code lookup warning:', e);
       }
     }
     return null;
   }, []);
 
-  const addFriend = useCallback(async (data: { email: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }): Promise<boolean> => {
-    const client = getSupabaseClient();
-    const cleanEmail = data.email.trim().toLowerCase();
-    if (!cleanEmail) {
-      showToast('বন্ধুর ইমেইল বা ইউজারনেম দিন', 'error');
-      return false;
+  const lookupStudentByEmail = useCallback(async (email: string): Promise<{ id?: string; student_code?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' } | null> => {
+    const clean = email.trim();
+    if (!clean) return null;
+
+    // If it looks like a student code (e.g. starts with SM- or doesn't have @), use code lookup
+    if (clean.toUpperCase().startsWith('SM-') || !clean.includes('@')) {
+      return lookupStudentByCode(clean);
     }
 
-    const randomStudyToday = Math.floor(Math.random() * 180) + 75; // 1h15m - 4h15m
-    const newFriend: Friend = {
-      id: 'frnd_' + Math.random().toString(36).substring(2, 9),
-      user_id: user?.id || 'demo-user',
-      friend_email: cleanEmail,
-      friend_name: data.name?.trim() || cleanEmail.split('@')[0],
-      student_class: data.student_class?.trim() || 'একাদশ শ্রেণি (HSC 2026)',
-      institution: data.institution?.trim() || 'নটর ডেম কলেজ, ঢাকা',
-      gender: data.gender || 'male',
-      today_minutes: randomStudyToday,
-      weekly_minutes: randomStudyToday * 5,
-      study_streak: Math.floor(Math.random() * 14) + 1,
-      completed_tasks: Math.floor(Math.random() * 6) + 1,
-      status: 'accepted',
-      last_studied_subject: subjects[0]?.name || 'উচ্চতর গণিত',
-      last_active: 'এইমাত্র যুক্ত হয়েছে',
-    };
-
-    if (!isDemoMode && user && client) {
+    const client = getSupabaseClient();
+    if (client) {
       try {
-        const { error } = await client
-          .from('friendships')
-          .insert({
-            user_id: user.id,
-            friend_email: cleanEmail,
-            friend_name: newFriend.friend_name,
-            student_class: newFriend.student_class,
-            institution: newFriend.institution,
-            status: 'accepted',
-          });
-        if (error && error.code !== '23505') {
-          console.warn('Friendship cloud error:', error);
+        const { data, error } = await client
+          .from('profiles')
+          .select('id, student_code, email, full_name, student_class, institution, gender')
+          .eq('email', clean.toLowerCase())
+          .maybeSingle();
+        if (data && !error) {
+          return {
+            id: data.id,
+            student_code: data.student_code || ('SM-' + data.id.replace(/-/g, '').substring(0, 6).toUpperCase()),
+            name: data.full_name || undefined,
+            student_class: data.student_class || undefined,
+            institution: data.institution || undefined,
+            gender: (data.gender as 'male' | 'female') || 'male',
+          };
         }
-      } catch (err: unknown) {
-        console.warn('Friendship cloud error:', err);
+      } catch (e) {
+        console.warn('Student email lookup failed in Supabase:', e);
+      }
+    }
+    return null;
+  }, [lookupStudentByCode]);
+
+  const sendFriendRequest = useCallback(async (data: { student_code?: string; email?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }): Promise<{ success: boolean; message?: string }> => {
+    const rawCode = (data.student_code || data.email || '').trim();
+    const targetCode = rawCode.toUpperCase();
+    const myId = user?.id || profile?.id || 'student-bd';
+    const myCode = (profile?.student_code || (user ? 'SM-' + user.id.replace(/-/g, '').substring(0, 6).toUpperCase() : '')).toUpperCase();
+
+    if (!targetCode) {
+      showToast('বন্ধুর স্টুডেন্ট আইডি দিন', 'error');
+      return { success: false, message: 'স্টুডেন্ট আইডি দেওয়া আবশ্যক' };
+    }
+
+    if (myCode && targetCode === myCode) {
+      showToast('আপনি নিজেকে বন্ধুত্বের আবেদন পাঠাতে পারবেন না', 'error');
+      return { success: false, message: 'নিজেকে আবেদন পাঠানো সম্ভব নয়' };
+    }
+
+    // Check if already friends
+    const isAlreadyFriend = friends.some(f => 
+      (f.friend_code && f.friend_code.toUpperCase() === targetCode) || 
+      (f.friend_email && f.friend_email.toLowerCase() === rawCode.toLowerCase())
+    );
+    if (isAlreadyFriend) {
+      showToast('এই শিক্ষার্থী ইতোমধ্যে আপনার বন্ধু তালিকায় আছেন!', 'info');
+      return { success: false, message: 'ইতোমধ্যে বন্ধু তালিকায় আছেন' };
+    }
+
+    // Check if outgoing or incoming request already exists
+    const existingReq = friendRequests.find(r => 
+      ((r.receiver_code && r.receiver_code.toUpperCase() === targetCode) ||
+       (r.sender_code && r.sender_code.toUpperCase() === targetCode) ||
+       (r.receiver_email && r.receiver_email.toLowerCase() === rawCode.toLowerCase())) &&
+      r.status === 'pending'
+    );
+    if (existingReq) {
+      if (existingReq.direction === 'outgoing') {
+        showToast('এই শিক্ষার্থীকে ইতোমধ্যে আবেদন পাঠানো হয়েছে। অপেক্ষমান রয়েছে।', 'info');
+        return { success: false, message: 'আবেদন ইতোমধ্যে পাঠানো হয়েছে' };
+      } else {
+        showToast('এই শিক্ষার্থী ইতোমধ্যে আপনাকে আবেদন পাঠিয়েছেন! অনুগ্রহ করে আবেদন গ্রহণ করুন।', 'info');
+        return { success: false, message: 'আবেদন অপেক্ষমান' };
       }
     }
 
-    setFriends(prev => {
-      const exists = prev.some(f => f.friend_email.toLowerCase() === cleanEmail);
-      if (exists) return prev;
-      const next = [newFriend, ...prev];
+    const client = getSupabaseClient();
+    if (!isDemoMode && user && client) {
       try {
-        localStorage.setItem('studymate_friends', JSON.stringify(next));
+        let recipientProfile: { id: string; student_code?: string; email?: string; full_name?: string; student_class?: string; institution?: string; gender?: string } | null = null;
+        
+        // Search by student_code, id, or email
+        const { data: recByCode } = await client
+          .from('profiles')
+          .select('id, student_code, email, full_name, student_class, institution, gender')
+          .or(`student_code.ilike.${targetCode},id.eq.${rawCode.toLowerCase()},email.ilike.${rawCode.toLowerCase()}`)
+          .maybeSingle();
+
+        recipientProfile = recByCode;
+
+        if (!recipientProfile) {
+          showToast('এই আইডিতে কোনো নিবন্ধিত শিক্ষার্থী পাওয়া যায়নি।', 'error');
+          return { success: false, message: 'শিক্ষার্থী পাওয়া যায়নি' };
+        }
+
+        if (recipientProfile.id === user.id) {
+          showToast('আপনি নিজেকে বন্ধুত্বের আবেদন পাঠাতে পারবেন না', 'error');
+          return { success: false, message: 'নিজেকে আবেদন পাঠানো সম্ভব নয়' };
+        }
+
+        const { data: insertedReq, error } = await client
+          .from('friend_requests')
+          .insert({
+            sender_id: user.id,
+            receiver_id: recipientProfile.id,
+            status: 'pending'
+          })
+          .select()
+          .single();
+
+        if (error) {
+          if (error.code === '23505') {
+            showToast('এই শিক্ষার্থীকে ইতোমধ্যে আবেদন পাঠানো হয়েছে', 'info');
+            return { success: false, message: 'ইতোমধ্যে পাঠানো হয়েছে' };
+          }
+          throw error;
+        }
+
+        const newReq: FriendRequest = {
+          id: insertedReq.id,
+          sender_id: user.id,
+          receiver_id: recipientProfile.id,
+          sender_code: myCode,
+          receiver_code: recipientProfile.student_code || ('SM-' + recipientProfile.id.replace(/-/g, '').substring(0, 6).toUpperCase()),
+          sender_name: profile?.full_name || user.email?.split('@')[0] || 'শিক্ষার্থী',
+          sender_email: user.email || '',
+          sender_class: profile?.student_class,
+          sender_institution: profile?.institution,
+          sender_gender: profile?.gender,
+          receiver_name: recipientProfile.full_name || recipientProfile.student_code || 'সহপাঠী',
+          receiver_email: recipientProfile.email,
+          status: 'pending',
+          created_at: insertedReq.created_at || new Date().toISOString(),
+          direction: 'outgoing',
+        };
+
+        setFriendRequests(prev => [newReq, ...prev]);
+        showToast(t.friends.requestSent, 'success');
+        return { success: true };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        showToast(`আবেদন পাঠানো ব্যর্থ: ${msg}`, 'error');
+        return { success: false, message: msg };
+      }
+    } else {
+      // Local/Offline request creation
+      const recipientName = data.name?.trim() || `সহপাঠী (${targetCode})`;
+      const newReq: FriendRequest = {
+        id: 'req_' + Math.random().toString(36).substring(2, 9),
+        sender_id: myId,
+        receiver_id: 'peer_' + Math.random().toString(36).substring(2, 8),
+        sender_code: myCode,
+        receiver_code: targetCode,
+        sender_name: profile?.full_name || 'নতুন শিক্ষার্থী',
+        sender_class: profile?.student_class || '',
+        sender_institution: profile?.institution || '',
+        sender_gender: profile?.gender || 'male',
+        receiver_name: recipientName,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        direction: 'outgoing',
+      };
+
+      setFriendRequests(prev => {
+        const next = [newReq, ...prev];
+        try {
+          localStorage.setItem('studymate_demo_requests_v2', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      showToast(t.friends.requestSent, 'success');
+      return { success: true };
+    }
+  }, [isDemoMode, user, profile, friends, friendRequests, showToast, t]);
+
+  const acceptFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
+    const targetReq = friendRequests.find(r => r.id === requestId);
+    if (!targetReq) return false;
+
+    const client = getSupabaseClient();
+    if (!isDemoMode && user && client) {
+      try {
+        await client
+          .from('friend_requests')
+          .update({ status: 'accepted', updated_at: new Date().toISOString() })
+          .eq('id', requestId);
+
+        await client
+          .from('friendships')
+          .insert([
+            { user_id: user.id, friend_id: targetReq.sender_id },
+            { user_id: targetReq.sender_id, friend_id: user.id }
+          ]);
+
+        await refreshFriendsData();
+        showToast(t.friends.requestAccepted, 'success');
+        return true;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        showToast(`আবেদন গ্রহণে ত্রুটি: ${msg}`, 'error');
+        return false;
+      }
+    } else {
+      // Demo mode: accept incoming request with realistic study stats
+      const newFriend: Friend = {
+        id: 'frnd_' + Math.random().toString(36).substring(2, 9),
+        user_id: user?.id || 'demo-user-student-bd',
+        friend_email: targetReq.sender_email,
+        friend_name: targetReq.sender_name,
+        student_class: targetReq.sender_class || 'একাদশ শ্রেণি (HSC 2026)',
+        institution: targetReq.sender_institution || 'ভিকারুননিসা নূন স্কুল অ্যান্ড কলেজ, ঢাকা',
+        gender: targetReq.sender_gender || 'female',
+        today_minutes: 195, // 3h 15m
+        weekly_minutes: 960, // 16h
+        study_streak: 8,
+        completed_tasks: 5,
+        status: 'accepted',
+        last_studied_subject: 'উচ্চতর গণিত (Higher Math)',
+        last_active: 'এইমাত্র সক্রিয়',
+      };
+
+      setFriends(prev => {
+        const exists = prev.some(f => 
+          (f.friend_id === targetReq.sender_id) || 
+          (Boolean(f.friend_email && targetReq.sender_email && f.friend_email.toLowerCase() === targetReq.sender_email.toLowerCase()))
+        );
+        const next = exists ? prev : [newFriend, ...prev];
+        try {
+          localStorage.setItem('studymate_demo_friends_v2', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      setFriendRequests(prev => {
+        const next = prev.filter(r => r.id !== requestId);
+        try {
+          localStorage.setItem('studymate_demo_requests_v2', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      showToast(t.friends.requestAccepted, 'success');
+      return true;
+    }
+  }, [isDemoMode, user, friendRequests, showToast, t, refreshFriendsData]);
+
+  const declineFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
+    const client = getSupabaseClient();
+    if (!isDemoMode && user && client) {
+      try {
+        await client.from('friend_requests').delete().eq('id', requestId);
+      } catch (e) {
+        console.warn('Decline error:', e);
+      }
+    }
+    setFriendRequests(prev => {
+      const next = prev.filter(r => r.id !== requestId);
+      try {
+        localStorage.setItem('studymate_demo_requests_v2', JSON.stringify(next));
       } catch {}
       return next;
     });
-
-    showToast(t.common.success, 'success');
+    showToast(t.friends.requestDeclined, 'info');
     return true;
-  }, [isDemoMode, user, subjects, showToast, t]);
+  }, [isDemoMode, user, showToast, t]);
+
+  const cancelFriendRequest = useCallback(async (requestId: string): Promise<boolean> => {
+    const client = getSupabaseClient();
+    if (!isDemoMode && user && client) {
+      try {
+        await client.from('friend_requests').delete().eq('id', requestId);
+      } catch (e) {
+        console.warn('Cancel error:', e);
+      }
+    }
+    setFriendRequests(prev => {
+      const next = prev.filter(r => r.id !== requestId);
+      try {
+        localStorage.setItem('studymate_demo_requests_v2', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    showToast(t.friends.requestCancelled, 'info');
+    return true;
+  }, [isDemoMode, user, showToast, t]);
 
   const removeFriend = useCallback(async (id: string): Promise<boolean> => {
     const client = getSupabaseClient();
     if (!isDemoMode && user && client) {
       try {
-        await client.from('friendships').delete().eq('id', id);
+        await client.from('friendships').delete().or(`id.eq.${id},user_id.eq.${user.id},friend_id.eq.${user.id}`);
       } catch (e) {
         console.warn('Friendship delete error:', e);
       }
@@ -1221,6 +1833,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFriends(prev => {
       const next = prev.filter(f => f.id !== id);
       try {
+        localStorage.setItem('studymate_demo_friends_v2', JSON.stringify(next));
         localStorage.setItem('studymate_friends', JSON.stringify(next));
       } catch {}
       return next;
@@ -1229,9 +1842,103 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   }, [isDemoMode, user, showToast]);
 
-  const sendKudosToFriend = useCallback((_friendId: string) => {
+  const sendFriendCheer = useCallback(async (receiverId: string, cheerType: CheerType, message?: string): Promise<boolean> => {
+    const senderName = profile?.full_name || user?.email?.split('@')[0] || 'সহপাঠী';
+    const senderGender = profile?.gender || 'male';
+    const myId = user?.id || 'demo-user-student-bd';
+
+    const newCheer: FriendCheer = {
+      id: 'cheer_' + Math.random().toString(36).substring(2, 9),
+      sender_id: myId,
+      receiver_id: receiverId,
+      sender_name: senderName,
+      sender_gender: senderGender,
+      cheer_type: cheerType,
+      message: message?.trim() || undefined,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+
+    const client = getSupabaseClient();
+    if (!isDemoMode && user && client) {
+      try {
+        await client
+          .from('friend_cheers')
+          .insert({
+            sender_id: user.id,
+            receiver_id: receiverId,
+            cheer_type: cheerType,
+            message: message?.trim() || null,
+          });
+      } catch (e) {
+        console.warn('Cheer cloud save warning:', e);
+      }
+    }
+
+    setFriendCheers(prev => {
+      const next = [newCheer, ...prev];
+      try {
+        localStorage.setItem('studymate_demo_cheers_v2', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     showToast(t.friends.kudosSent, 'success');
-  }, [showToast, t]);
+    return true;
+  }, [isDemoMode, user, profile, showToast, t]);
+
+  const markCheerAsRead = useCallback(async (cheerId: string) => {
+    // 1. Immediately delete from local state
+    setFriendCheers(prev => {
+      const next = prev.filter(c => c.id !== cheerId);
+      try {
+        localStorage.setItem('studymate_demo_cheers_v2', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // 2. Delete from cloud database if online
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from('friend_cheers').delete().eq('id', cheerId);
+      } catch (e) {
+        console.warn('Cheer delete from db error:', e);
+      }
+    }
+
+    showToast('সাধুবাদ পড়া সম্পন্ন ও তালিকা থেকে সরানো হয়েছে', 'info');
+  }, [showToast]);
+
+  const markAllCheersAsRead = useCallback(async () => {
+    // 1. Clear local state
+    setFriendCheers([]);
+    try {
+      localStorage.removeItem('studymate_demo_cheers_v2');
+    } catch {}
+
+    // 2. Delete all received cheers from cloud database
+    const client = getSupabaseClient();
+    if (client && user) {
+      try {
+        await client.from('friend_cheers').delete().eq('receiver_id', user.id);
+      } catch (e) {
+        console.warn('Delete all cheers from db error:', e);
+      }
+    }
+
+    showToast('সকল সাধুবাদ পড়া সম্পন্ন ও তালিকা থেকে সরানো হয়েছে', 'info');
+  }, [user, showToast]);
+
+  const sendKudosToFriend = useCallback((friendId: string) => {
+    sendFriendCheer(friendId, 'applause');
+  }, [sendFriendCheer]);
+
+  // Backwards compatibility for direct addFriend
+  const addFriend = useCallback(async (data: { student_code?: string; email?: string; name?: string; student_class?: string; institution?: string; gender?: 'male' | 'female' }): Promise<boolean> => {
+    const res = await sendFriendRequest(data);
+    return res.success;
+  }, [sendFriendRequest]);
 
   // Complete Account & Data Deletion (Auth + Database + Storage)
   const deleteUserAccountAndData = useCallback(async (): Promise<boolean> => {
@@ -1285,12 +1992,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // 3. Defensive cascade delete across all user data tables to ensure zero orphaned records
         try {
           await Promise.allSettled([
+            client.from('friend_cheers').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+            client.from('friend_requests').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+            client.from('friendships').delete().or(`user_id.eq.${user.id},friend_id.eq.${user.id}`),
             client.from('study_sessions').delete().eq('user_id', user.id),
             client.from('tasks').delete().eq('user_id', user.id),
             client.from('exams').delete().eq('user_id', user.id),
             client.from('study_routines').delete().eq('user_id', user.id),
-            client.from('friendships').delete().eq('user_id', user.id),
-            user.email ? client.from('friendships').delete().eq('friend_email', user.email) : Promise.resolve(),
             client.from('subjects').delete().eq('user_id', user.id),
             client.from('profiles').delete().eq('id', user.id),
           ]);
@@ -1317,6 +2025,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('studymate_auth_token');
       localStorage.removeItem('studymate_cached_profile');
       localStorage.removeItem('studymate_demo_data_v1');
+      localStorage.removeItem('studymate_demo_friends_v2');
+      localStorage.removeItem('studymate_demo_requests_v2');
+      localStorage.removeItem('studymate_demo_cheers_v2');
       localStorage.removeItem('studymate_friends');
       localStorage.removeItem('studymate_active_tab');
       localStorage.removeItem('studymate_tab_history');
@@ -1335,6 +2046,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExams([]);
     setSessions([]);
     setFriends([]);
+    setFriendRequests([]);
+    setFriendCheers([]);
     setIsDemoMode(true);
     setActiveTabState('dashboard');
     showToast(t.settings.deleteAccountSuccess, 'success');
@@ -1900,10 +2613,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteExam,
         recordStudySession,
         friends,
-        addFriend,
+        friendRequests,
+        friendCheers,
+        unreadCheersCount,
+        pendingRequestsCount,
+        sendFriendRequest,
+        acceptFriendRequest,
+        declineFriendRequest,
+        cancelFriendRequest,
         removeFriend,
+        sendFriendCheer,
+        markCheerAsRead,
+        markAllCheersAsRead,
         sendKudosToFriend,
+        lookupStudentByCode,
         lookupStudentByEmail,
+        refreshFriendsData,
+        addFriend,
         activeTimerTaskId,
         activeTimerTaskTitle,
         startTaskTimer,

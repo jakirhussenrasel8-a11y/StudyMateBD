@@ -134,15 +134,15 @@ export const Sidebar: React.FC = () => {
           </div>
           <p className="text-charcoal-500 dark:text-slate-400 text-[11px] leading-relaxed">
             {isDemoMode 
-              ? 'লোকাল ডেমো মোড সক্রিয়। ডাটা ডিভাইসে সুরক্ষিত আছে।' 
-              : 'Supabase PostgreSQL ক্লাউডে সংযুক্ত।'}
+              ? 'লোকাল মোড সক্রিয়। ডাটা ডিভাইসে সুরক্ষিত আছে।' 
+              : 'ক্লাউড ডেটাবেজে সংযুক্ত ও রিয়েল-টাইম সিঙ্ক হচ্ছে।'}
           </p>
           {isDemoMode && (
             <button
               onClick={() => setActiveTab('settings')}
               className="mt-2 text-[11px] text-lavender-700 dark:text-lavender-300 font-extrabold hover:underline cursor-pointer flex items-center gap-1"
             >
-              ক্লাউড সিঙ্ক সেটআপ করুন &rarr;
+              ক্লাউড সিঙ্ক চালু করুন &rarr;
             </button>
           )}
         </div>

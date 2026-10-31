@@ -69,6 +69,7 @@ export type Gender = 'male' | 'female';
 export interface Profile {
   id: string;
   email: string;
+  student_code?: string;  // Unique Student ID e.g. SM-A1B2C3
   full_name?: string;
   student_class?: string; // Class / Grade (e.g. HSC 1st Year, Class 10, Honors 2nd Year)
   institution?: string;   // School / College / University / Coaching
@@ -81,7 +82,9 @@ export interface Profile {
 export interface Friend {
   id: string;
   user_id: string;
-  friend_email: string;
+  friend_id?: string;
+  friend_code?: string;
+  friend_email?: string;
   friend_name: string;
   gender?: Gender;
   student_class?: string;
@@ -92,6 +95,55 @@ export interface Friend {
   completed_tasks: number;
   status: 'accepted' | 'pending';
   last_studied_subject?: string;
+  last_active?: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  sender_code?: string;
+  receiver_code?: string;
+  sender_name: string;
+  sender_email?: string;
+  sender_class?: string;
+  sender_institution?: string;
+  sender_gender?: Gender;
+  receiver_name?: string;
+  receiver_email?: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  direction: 'incoming' | 'outgoing';
+}
+
+export type CheerType = 'applause' | 'fire' | 'target' | 'star' | 'heart';
+
+export interface FriendCheer {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  sender_name: string;
+  sender_gender?: Gender;
+  cheer_type: CheerType;
+  message?: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface FriendLiveStats {
+  user_id: string;
+  friendship_id: string;
+  full_name: string;
+  email: string;
+  gender?: Gender;
+  student_class?: string;
+  institution?: string;
+  today_study_minutes: number;
+  weekly_study_minutes: number;
+  study_streak: number;
+  completed_tasks_count: number;
+  top_subject_name?: string;
+  top_subject_color?: string;
   last_active?: string;
 }
 

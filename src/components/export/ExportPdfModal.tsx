@@ -73,9 +73,9 @@ export const ExportPdfModal: React.FC<ExportPdfModalProps> = ({
   }, [isOpen, registerModal]);
 
   const todayStr = currentDhakaDate || getDhakaDateString();
-  const studentName = profile?.full_name || 'Rasu IT';
-  const studentClass = profile?.student_class || "Hon's 3rd Year";
-  const studentInstitution = profile?.institution || 'Maulvibazar Govt. College';
+  const studentName = profile?.full_name || 'শিক্ষার্থী';
+  const studentClass = profile?.student_class || '';
+  const studentInstitution = profile?.institution || '';
 
   const subjectMap = useMemo(() => {
     const map = new Map<string, typeof subjects[0]>();

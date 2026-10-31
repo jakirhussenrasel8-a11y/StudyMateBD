@@ -1,23 +1,31 @@
 -- ==============================================================================
 -- StudyMate BD - Supabase PostgreSQL Database Schema & Security Rules (RLS)
 -- ==============================================================================
--- INSTRUCTIONS FOR BEGINNERS:
+-- INSTRUCTIONS FOR STUDENTS / DEVELOPERS:
 -- 1. Go to your Supabase project dashboard (https://supabase.com/dashboard)
 -- 2. Open the "SQL Editor" tab from the left sidebar
 -- 3. Click "New query"
--- 4. Copy and paste this entire file content into the query editor
--- 5. Click the green "Run" button (Ctrl+Enter or Cmd+Enter)
+-- 4. Copy and paste this entire code into the editor
+-- 5. Click the green "Run" button (Ctrl+Enter / Cmd+Enter)
 -- 6. Done! All tables, relationships, and security policies are now created.
 -- ==============================================================================
 
--- Enable UUID extension if not already enabled
+-- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- ==============================================================================
+-- 0. CLEANUP LEGACY INCOMPATIBLE FRIENDSHIP TABLES
+-- (Prevents ERROR: 42703 "column friend_id does not exist" from old schema cache)
+-- ==============================================================================
+DROP TABLE IF EXISTS public.friend_cheers CASCADE;
+DROP TABLE IF EXISTS public.friend_requests CASCADE;
+DROP TABLE IF EXISTS public.friendships CASCADE;
+
 -- 1. PROFILES TABLE
--- Stores extra student information linked to Supabase auth.users
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
+  student_code TEXT UNIQUE,
   full_name TEXT,
   student_class TEXT,
   institution TEXT,
@@ -27,6 +35,22 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
+
+-- Safely ensure all profiles columns exist
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_code TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS student_class TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS institution TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'male';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS target_study_hours_per_day NUMERIC DEFAULT 4.0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS preferred_language TEXT DEFAULT 'bn';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Populate student_code for any existing profiles
+UPDATE public.profiles
+SET student_code = 'SM-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 1, 6))
+WHERE student_code IS NULL OR student_code = '';
 
 -- 2. SUBJECTS TABLE
 CREATE TABLE IF NOT EXISTS public.subjects (
@@ -56,8 +80,14 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS due_time TIME;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'medium';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS estimated_minutes INTEGER DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- 4. STUDY ROUTINES TABLE (Weekly Timetable)
--- day_of_week: 0 = Saturday, 1 = Sunday, 2 = Monday, 3 = Tuesday, 4 = Wednesday, 5 = Thursday, 6 = Friday
 CREATE TABLE IF NOT EXISTS public.study_routines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -69,6 +99,10 @@ CREATE TABLE IF NOT EXISTS public.study_routines (
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
+
+ALTER TABLE public.study_routines ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.study_routines ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.study_routines ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- 5. EXAMS TABLE
 CREATE TABLE IF NOT EXISTS public.exams (
@@ -85,6 +119,13 @@ CREATE TABLE IF NOT EXISTS public.exams (
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS exam_time TIME;
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS room_or_location TEXT;
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS total_marks NUMERIC;
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- 6. STUDY SESSIONS TABLE (Pomodoro & Study logs)
 CREATE TABLE IF NOT EXISTS public.study_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -93,7 +134,54 @@ CREATE TABLE IF NOT EXISTS public.study_sessions (
   duration_minutes INTEGER NOT NULL CHECK (duration_minutes > 0),
   session_type TEXT NOT NULL DEFAULT 'pomodoro' CHECK (session_type IN ('pomodoro', 'short_break', 'long_break', 'manual')),
   completed_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   notes TEXT
+);
+
+-- Ensure both completed_at and created_at exist regardless of past schema state
+ALTER TABLE public.study_sessions ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.study_sessions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+UPDATE public.study_sessions SET completed_at = COALESCE(completed_at, created_at, NOW()), created_at = COALESCE(created_at, completed_at, NOW());
+
+-- ==============================================================================
+-- FRIENDSHIPS, REQUESTS & CHEERS TABLES
+-- (Safely drop legacy incompatible schemas first so friend_id column is guaranteed)
+-- ==============================================================================
+DROP TABLE IF EXISTS public.friend_cheers CASCADE;
+DROP TABLE IF EXISTS public.friend_requests CASCADE;
+DROP TABLE IF EXISTS public.friendships CASCADE;
+
+-- 7. FRIEND REQUESTS TABLE (Peer Requests & Approvals)
+CREATE TABLE public.friend_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  receiver_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  CONSTRAINT check_different_request_users CHECK (sender_id <> receiver_id),
+  CONSTRAINT unique_friend_request UNIQUE (sender_id, receiver_id)
+);
+
+-- 8. FRIENDSHIPS TABLE (Accepted Mutual Study Partnerships)
+CREATE TABLE public.friendships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  friend_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  CONSTRAINT check_different_friends CHECK (user_id <> friend_id),
+  CONSTRAINT unique_friendship UNIQUE (user_id, friend_id)
+);
+
+-- 9. FRIEND CHEERS TABLE (Praise, Kudos & Reactions)
+CREATE TABLE public.friend_cheers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  receiver_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  cheer_type TEXT NOT NULL DEFAULT 'applause' CHECK (cheer_type IN ('applause', 'fire', 'target', 'star', 'heart')),
+  message TEXT,
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
 -- ==============================================================================
@@ -105,169 +193,291 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_routines_user_day ON public.study_routines(user_id, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_exams_user_date ON public.exams(user_id, exam_date);
 CREATE INDEX IF NOT EXISTS idx_study_sessions_user_completed ON public.study_sessions(user_id, completed_at);
+CREATE INDEX IF NOT EXISTS idx_study_sessions_user_created ON public.study_sessions(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_friend_requests_sender ON public.friend_requests(sender_id);
+CREATE INDEX IF NOT EXISTS idx_friend_requests_receiver ON public.friend_requests(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_user ON public.friendships(user_id);
+CREATE INDEX IF NOT EXISTS idx_friendships_friend ON public.friendships(friend_id);
+CREATE INDEX IF NOT EXISTS idx_friend_cheers_receiver ON public.friend_cheers(receiver_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_profiles_student_code ON public.profiles(student_code);
 
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
--- Ensures each user can ONLY access and modify their OWN records!
 -- ==============================================================================
-
--- Enable RLS on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_routines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.exams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_sessions ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies if rerun to ensure idempotency
-DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
-DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-
-DROP POLICY IF EXISTS "Users can view own subjects" ON public.subjects;
-DROP POLICY IF EXISTS "Users can insert own subjects" ON public.subjects;
-DROP POLICY IF EXISTS "Users can update own subjects" ON public.subjects;
-DROP POLICY IF EXISTS "Users can delete own subjects" ON public.subjects;
-
-DROP POLICY IF EXISTS "Users can view own tasks" ON public.tasks;
-DROP POLICY IF EXISTS "Users can insert own tasks" ON public.tasks;
-DROP POLICY IF EXISTS "Users can update own tasks" ON public.tasks;
-DROP POLICY IF EXISTS "Users can delete own tasks" ON public.tasks;
-
-DROP POLICY IF EXISTS "Users can view own routines" ON public.study_routines;
-DROP POLICY IF EXISTS "Users can insert own routines" ON public.study_routines;
-DROP POLICY IF EXISTS "Users can update own routines" ON public.study_routines;
-DROP POLICY IF EXISTS "Users can delete own routines" ON public.study_routines;
-
-DROP POLICY IF EXISTS "Users can view own exams" ON public.exams;
-DROP POLICY IF EXISTS "Users can insert own exams" ON public.exams;
-DROP POLICY IF EXISTS "Users can update own exams" ON public.exams;
-DROP POLICY IF EXISTS "Users can delete own exams" ON public.exams;
-
-DROP POLICY IF EXISTS "Users can view own sessions" ON public.study_sessions;
-DROP POLICY IF EXISTS "Users can insert own sessions" ON public.study_sessions;
-DROP POLICY IF EXISTS "Users can update own sessions" ON public.study_sessions;
-DROP POLICY IF EXISTS "Users can delete own sessions" ON public.study_sessions;
+ALTER TABLE public.friend_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.friend_cheers ENABLE ROW LEVEL SECURITY;
 
 -- 1. Profiles Policies
-CREATE POLICY "Users can view own profile"
+DROP POLICY IF EXISTS "Users can search student profiles" ON public.profiles;
+CREATE POLICY "Users can search student profiles"
   ON public.profiles FOR SELECT
-  USING (auth.uid() = id);
+  TO authenticated
+  USING (true);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
   ON public.profiles FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
+  TO authenticated
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
 -- 2. Subjects Policies
+DROP POLICY IF EXISTS "Users can view own subjects" ON public.subjects;
 CREATE POLICY "Users can view own subjects"
   ON public.subjects FOR SELECT
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (
+    auth.uid() = user_id 
+    OR EXISTS (
+      SELECT 1 FROM public.friendships 
+      WHERE (user_id = auth.uid() AND friend_id = public.subjects.user_id)
+         OR (friend_id = auth.uid() AND user_id = public.subjects.user_id)
+    )
+  );
 
+DROP POLICY IF EXISTS "Users can insert own subjects" ON public.subjects;
 CREATE POLICY "Users can insert own subjects"
   ON public.subjects FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own subjects" ON public.subjects;
 CREATE POLICY "Users can update own subjects"
   ON public.subjects FOR UPDATE
+  TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own subjects" ON public.subjects;
 CREATE POLICY "Users can delete own subjects"
   ON public.subjects FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- 3. Tasks Policies
+DROP POLICY IF EXISTS "Users can view own tasks" ON public.tasks;
 CREATE POLICY "Users can view own tasks"
   ON public.tasks FOR SELECT
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (
+    auth.uid() = user_id 
+    OR EXISTS (
+      SELECT 1 FROM public.friendships 
+      WHERE (user_id = auth.uid() AND friend_id = public.tasks.user_id)
+         OR (friend_id = auth.uid() AND user_id = public.tasks.user_id)
+    )
+  );
 
+DROP POLICY IF EXISTS "Users can insert own tasks" ON public.tasks;
 CREATE POLICY "Users can insert own tasks"
   ON public.tasks FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own tasks" ON public.tasks;
 CREATE POLICY "Users can update own tasks"
   ON public.tasks FOR UPDATE
+  TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own tasks" ON public.tasks;
 CREATE POLICY "Users can delete own tasks"
   ON public.tasks FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- 4. Study Routines Policies
+DROP POLICY IF EXISTS "Users can view own routines" ON public.study_routines;
 CREATE POLICY "Users can view own routines"
   ON public.study_routines FOR SELECT
+  TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own routines" ON public.study_routines;
 CREATE POLICY "Users can insert own routines"
   ON public.study_routines FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own routines" ON public.study_routines;
 CREATE POLICY "Users can update own routines"
   ON public.study_routines FOR UPDATE
+  TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own routines" ON public.study_routines;
 CREATE POLICY "Users can delete own routines"
   ON public.study_routines FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- 5. Exams Policies
+DROP POLICY IF EXISTS "Users can view own exams" ON public.exams;
 CREATE POLICY "Users can view own exams"
   ON public.exams FOR SELECT
+  TO authenticated
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own exams" ON public.exams;
 CREATE POLICY "Users can insert own exams"
   ON public.exams FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own exams" ON public.exams;
 CREATE POLICY "Users can update own exams"
   ON public.exams FOR UPDATE
+  TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own exams" ON public.exams;
 CREATE POLICY "Users can delete own exams"
   ON public.exams FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
 
 -- 6. Study Sessions Policies
+DROP POLICY IF EXISTS "Users can view own sessions" ON public.study_sessions;
 CREATE POLICY "Users can view own sessions"
   ON public.study_sessions FOR SELECT
-  USING (auth.uid() = user_id);
+  TO authenticated
+  USING (
+    auth.uid() = user_id 
+    OR EXISTS (
+      SELECT 1 FROM public.friendships 
+      WHERE (user_id = auth.uid() AND friend_id = public.study_sessions.user_id)
+         OR (friend_id = auth.uid() AND user_id = public.study_sessions.user_id)
+    )
+  );
 
+DROP POLICY IF EXISTS "Users can insert own sessions" ON public.study_sessions;
 CREATE POLICY "Users can insert own sessions"
   ON public.study_sessions FOR INSERT
+  TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own sessions" ON public.study_sessions;
 CREATE POLICY "Users can update own sessions"
   ON public.study_sessions FOR UPDATE
+  TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own sessions" ON public.study_sessions;
 CREATE POLICY "Users can delete own sessions"
   ON public.study_sessions FOR DELETE
+  TO authenticated
   USING (auth.uid() = user_id);
+
+-- 7. Friend Requests Policies
+DROP POLICY IF EXISTS "Users can view relevant friend requests" ON public.friend_requests;
+CREATE POLICY "Users can view relevant friend requests"
+  ON public.friend_requests FOR SELECT
+  TO authenticated
+  USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+DROP POLICY IF EXISTS "Users can send friend requests" ON public.friend_requests;
+CREATE POLICY "Users can send friend requests"
+  ON public.friend_requests FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = sender_id AND sender_id <> receiver_id);
+
+DROP POLICY IF EXISTS "Users can update relevant friend requests" ON public.friend_requests;
+CREATE POLICY "Users can update relevant friend requests"
+  ON public.friend_requests FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = sender_id OR auth.uid() = receiver_id)
+  WITH CHECK (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+DROP POLICY IF EXISTS "Users can delete relevant friend requests" ON public.friend_requests;
+CREATE POLICY "Users can delete relevant friend requests"
+  ON public.friend_requests FOR DELETE
+  TO authenticated
+  USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+-- 8. Friendships Policies
+DROP POLICY IF EXISTS "Users can view own friendships" ON public.friendships;
+CREATE POLICY "Users can view own friendships"
+  ON public.friendships FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id OR auth.uid() = friend_id);
+
+DROP POLICY IF EXISTS "Users can insert friendships" ON public.friendships;
+CREATE POLICY "Users can insert friendships"
+  ON public.friendships FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id OR auth.uid() = friend_id);
+
+DROP POLICY IF EXISTS "Users can delete friendships" ON public.friendships;
+CREATE POLICY "Users can delete friendships"
+  ON public.friendships FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id OR auth.uid() = friend_id);
+
+-- 9. Friend Cheers Policies
+DROP POLICY IF EXISTS "Users can view relevant cheers" ON public.friend_cheers;
+CREATE POLICY "Users can view relevant cheers"
+  ON public.friend_cheers FOR SELECT
+  TO authenticated
+  USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+DROP POLICY IF EXISTS "Users can send cheers" ON public.friend_cheers;
+CREATE POLICY "Users can send cheers"
+  ON public.friend_cheers FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = sender_id AND sender_id <> receiver_id);
+
+DROP POLICY IF EXISTS "Users can update received cheers" ON public.friend_cheers;
+CREATE POLICY "Users can update received cheers"
+  ON public.friend_cheers FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = receiver_id)
+  WITH CHECK (auth.uid() = receiver_id);
+
+DROP POLICY IF EXISTS "Users can delete own cheers" ON public.friend_cheers;
+CREATE POLICY "Users can delete own cheers"
+  ON public.friend_cheers FOR DELETE
+  TO authenticated
+  USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
 -- ==============================================================================
 -- AUTOMATIC PROFILE CREATION TRIGGER
--- When a user registers through Supabase Auth, automatically insert a row in profiles
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  new_student_code TEXT;
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, preferred_language)
+  new_student_code := 'SM-' || UPPER(SUBSTRING(REPLACE(NEW.id::text, '-', ''), 1, 6));
+
+  INSERT INTO public.profiles (id, email, student_code, full_name, preferred_language, gender)
   VALUES (
     NEW.id,
     NEW.email,
+    new_student_code,
     COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    'bn'
+    'bn',
+    COALESCE(NEW.raw_user_meta_data->>'gender', 'male')
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE
+  SET email = EXCLUDED.email,
+      student_code = COALESCE(public.profiles.student_code, EXCLUDED.student_code);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -279,9 +489,6 @@ CREATE TRIGGER on_auth_user_created
 
 -- ==============================================================================
 -- COMPLETE AND PERMANENT ACCOUNT DELETION RPC
--- Deletes the calling student's authentication account and all associated data.
--- Since all user data tables reference auth.users(id) ON DELETE CASCADE,
--- deleting the user from auth.users permanently purges all records.
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.delete_user_account()
 RETURNS boolean
@@ -297,7 +504,10 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  -- Explicit cascade delete on all user records to guarantee no orphans
+  DELETE FROM public.friend_cheers WHERE sender_id = current_user_id OR receiver_id = current_user_id;
+  DELETE FROM public.friendships WHERE user_id = current_user_id OR friend_id = current_user_id;
+  DELETE FROM public.friend_requests WHERE sender_id = current_user_id OR receiver_id = current_user_id;
+
   DELETE FROM public.study_sessions WHERE user_id = current_user_id;
   DELETE FROM public.tasks WHERE user_id = current_user_id;
   DELETE FROM public.exams WHERE user_id = current_user_id;
@@ -305,12 +515,10 @@ BEGIN
   DELETE FROM public.subjects WHERE user_id = current_user_id;
   DELETE FROM public.profiles WHERE id = current_user_id;
 
-  -- Permanently delete the user from auth.users so they cannot log in again
   DELETE FROM auth.users WHERE id = current_user_id;
 
   RETURN true;
 END;
 $$;
 
--- Grant execution to authenticated users
 GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;

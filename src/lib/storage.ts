@@ -14,75 +14,28 @@ export function getDateOffset(days: number): string {
 }
 
 /**
- * Creates realistic, relatable sample data for Bangladeshi students.
+ * Creates clean, empty fresh data for new students with a unique student ID.
  */
 export function generateInitialDemoData() {
-  const demoUserId = 'demo-user-student-bd';
-  const today = getTodayDateString();
+  const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const demoUserId = 'student-' + randomSuffix.toLowerCase();
+  const studentCode = 'SM-' + randomSuffix;
 
-  const subjects: Subject[] = [
-    {
-      id: 'sub-1',
-      user_id: demoUserId,
-      name: 'উচ্চতর গণিত (Higher Math)',
-      color: '#10b981', // emerald
-      icon: 'Calculator',
-      description: 'ক্যালকুলাস ও ত্রিকোণমিতি অনুশীলন',
-      created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-    },
-    {
-      id: 'sub-2',
-      user_id: demoUserId,
-      name: 'পদার্থবিজ্ঞান (Physics)',
-      color: '#3b82f6', // blue
-      icon: 'Atom',
-      description: 'বলবিদ্যা, তড়িৎ ও আধুনিক পদার্থবিজ্ঞান',
-      created_at: new Date(Date.now() - 28 * 86400000).toISOString(),
-    },
-    {
-      id: 'sub-3',
-      user_id: demoUserId,
-      name: 'রসায়ন (Chemistry)',
-      color: '#f59e0b', // amber
-      icon: 'FlaskConical',
-      description: 'জৈব রসায়ন ও পর্যায় সারণি',
-      created_at: new Date(Date.now() - 25 * 86400000).toISOString(),
-    },
-    {
-      id: 'sub-4',
-      user_id: demoUserId,
-      name: 'ইংরেজি (English 1st & 2nd)',
-      color: '#8b5cf6', // purple
-      icon: 'BookOpen',
-      description: 'Grammar, Reading comprehension & Composition',
-      created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
-    },
-    {
-      id: 'sub-5',
-      user_id: demoUserId,
-      name: 'তথ্য ও যোগাযোগ প্রযুক্তি (ICT)',
-      color: '#06b6d4', // cyan
-      icon: 'Laptop',
-      description: 'সি প্রোগ্রামিং, এইচটিএমএল ও ডাটাবেজ',
-      created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-    },
-  ];
-
+  const subjects: Subject[] = [];
   const tasks: Task[] = [];
-
-  // Routine for weekdays (0 = Saturday, 1 = Sunday ... 6 = Friday)
   const routines: StudyRoutine[] = [];
   const exams: Exam[] = [];
   const sessions: StudySession[] = [];
 
   const profile: Profile = {
     id: demoUserId,
-    email: 'student@example.com',
-    full_name: 'Rasu IT',
-    student_class: "Hon's 3rd Year",
-    institution: 'Maulvibazar Govt. College',
+    email: '',
+    student_code: studentCode,
+    full_name: 'নতুন শিক্ষার্থী',
+    student_class: '',
+    institution: '',
     gender: 'male',
-    target_study_hours_per_day: 5,
+    target_study_hours_per_day: 4,
     preferred_language: 'bn',
     created_at: new Date().toISOString(),
   };
@@ -106,31 +59,33 @@ export function loadDemoDataFromStorage() {
       return initial;
     }
     const parsed = JSON.parse(raw);
+    
+    // Purge legacy demo data (like fake subjects or sample names) so new users always have a fresh slate
+    if (parsed.profile?.full_name === 'Rasu IT' || parsed.profile?.full_name === 'তানভীর আহমেদ') {
+      const fresh = generateInitialDemoData();
+      saveDemoDataToStorage(fresh);
+      return fresh;
+    }
+
     if (!parsed.subjects || !parsed.tasks) {
       const initial = generateInitialDemoData();
       saveDemoDataToStorage(initial);
       return initial;
     }
+
     if (!parsed.profile) {
-      parsed.profile = {
-        id: 'demo-user-student-bd',
-        email: 'student@example.com',
-        full_name: 'Rasu IT',
-        student_class: "Hon's 3rd Year",
-        institution: 'Maulvibazar Govt. College',
-        target_study_hours_per_day: 5,
-        preferred_language: 'bn',
-        created_at: new Date().toISOString(),
-      };
-    } else if (parsed.profile.id === 'demo-user-student-bd' && (parsed.profile.full_name === 'তানভীর আহমেদ' || !parsed.profile.full_name)) {
-      parsed.profile.full_name = 'Rasu IT';
-      parsed.profile.student_class = "Hon's 3rd Year";
-      parsed.profile.institution = 'Maulvibazar Govt. College';
+      const initial = generateInitialDemoData();
+      parsed.profile = initial.profile;
+      saveDemoDataToStorage(parsed);
+    } else if (!parsed.profile.student_code) {
+      const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+      parsed.profile.student_code = 'SM-' + randomSuffix;
       saveDemoDataToStorage(parsed);
     }
+
     return parsed;
   } catch (e) {
-    console.error('Failed to load demo data from localStorage', e);
+    console.error('Failed to load data from localStorage', e);
     return generateInitialDemoData();
   }
 }

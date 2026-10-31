@@ -44,9 +44,9 @@ export const SettingsView: React.FC = () => {
   } = useApp();
 
   // Profile fields state
-  const [studentName, setStudentName] = useState(profile?.full_name || 'Rasu IT');
-  const [studentClass, setStudentClass] = useState(profile?.student_class || "Hon's 3rd Year");
-  const [institution, setInstitution] = useState(profile?.institution || 'Maulvibazar Govt. College');
+  const [studentName, setStudentName] = useState(profile?.full_name || 'নতুন শিক্ষার্থী');
+  const [studentClass, setStudentClass] = useState(profile?.student_class || '');
+  const [institution, setInstitution] = useState(profile?.institution || '');
   const [studentGender, setStudentGender] = useState<'male' | 'female'>(profile?.gender || 'male');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -228,7 +228,7 @@ export const SettingsView: React.FC = () => {
                   required
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="যেমন: Rasu IT"
+                  placeholder="যেমন: মোঃ সাকিব আহমেদ"
                   className="w-full pl-10 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                 />
               </div>
@@ -245,7 +245,7 @@ export const SettingsView: React.FC = () => {
                   required
                   value={studentClass}
                   onChange={(e) => setStudentClass(e.target.value)}
-                  placeholder="যেমন: Hon's 3rd Year"
+                  placeholder="যেমন: এইচএসসি / স্নাতক"
                   className="w-full pl-10 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                 />
               </div>
@@ -262,7 +262,7 @@ export const SettingsView: React.FC = () => {
                   required
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
-                  placeholder="যেমন: Maulvibazar Govt. College"
+                  placeholder="যেমন: ঢাকা কলেজ"
                   className="w-full pl-10 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                 />
               </div>
@@ -354,7 +354,9 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Data Backup, Export & Import */}
+
+
+      {/* 4. Data Backup, Export & Import */}
       <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
         <h3 className="font-black text-base text-charcoal-900 dark:text-white flex items-center gap-2">
           <Download className="w-4 h-4 text-sky-500" />

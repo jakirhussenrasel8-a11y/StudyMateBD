@@ -78,9 +78,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Profile Edit Modal State - Exact Demo defaults
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [studentName, setStudentName] = useState(profile?.full_name || 'Rasu IT');
-  const [studentClass, setStudentClass] = useState(profile?.student_class || "Hon's 3rd Year");
-  const [institution, setInstitution] = useState(profile?.institution || 'Maulvibazar Govt. College');
+  const [studentName, setStudentName] = useState(profile?.full_name || 'নতুন শিক্ষার্থী');
+  const [studentClass, setStudentClass] = useState(profile?.student_class || '');
+  const [institution, setInstitution] = useState(profile?.institution || '');
   const [studentGender, setStudentGender] = useState<'male' | 'female'>(profile?.gender || 'male');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,9 +187,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [subjects]);
 
   const handleOpenEditProfile = () => {
-    setStudentName(profile?.full_name || 'Rasu IT');
-    setStudentClass(profile?.student_class || "Hon's 3rd Year");
-    setInstitution(profile?.institution || 'Maulvibazar Govt. College');
+    setStudentName(profile?.full_name || 'নতুন শিক্ষার্থী');
+    setStudentClass(profile?.student_class || '');
+    setInstitution(profile?.institution || '');
     setStudentGender(profile?.gender || 'male');
     setIsEditProfileOpen(true);
   };
@@ -210,9 +210,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Rasu IT';
-  const displayClass = profile?.student_class || "Hon's 3rd Year";
-  const displayInstitution = profile?.institution || 'Maulvibazar Govt. College';
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'নতুন শিক্ষার্থী';
+  const displayClass = profile?.student_class || 'শ্রেণি নির্ধারণ করুন';
+  const displayInstitution = profile?.institution || 'প্রতিষ্ঠান যোগ করুন';
 
   // Overall task count
   const totalTasksCount = tasks.length;
@@ -882,7 +882,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     required
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="যেমন: Rasu IT"
+                    placeholder="যেমন: মোঃ সাকিব আহমেদ"
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                   />
                 </div>
@@ -899,7 +899,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     required
                     value={studentClass}
                     onChange={(e) => setStudentClass(e.target.value)}
-                    placeholder="যেমন: Hon's 3rd Year"
+                    placeholder="যেমন: এইচএসসি / স্নাতক"
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                   />
                 </div>
@@ -916,7 +916,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     required
                     value={institution}
                     onChange={(e) => setInstitution(e.target.value)}
-                    placeholder="যেমন: Maulvibazar Govt. College"
+                    placeholder="যেমন: ঢাকা কলেজ"
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
                   />
                 </div>

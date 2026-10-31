@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Friend } from '../../types';
+import { Friend, CheerType, FriendRequest, FriendCheer } from '../../types';
 import { 
   Users, 
   UserPlus, 
@@ -21,81 +21,134 @@ import {
   Heart,
   TrendingUp,
   Award,
-  Loader2
+  Loader2,
+  Mail,
+  Send,
+  Bell,
+  MessageSquare,
+  ThumbsUp,
+  Target,
+  Star,
+  CheckCheck,
+  ChevronRight,
+  Database
 } from 'lucide-react';
 import { StudentAvatar } from '../common/StudentAvatar';
+
+type FriendsTab = 'friends' | 'requests' | 'leaderboard' | 'cheers';
+type LeaderboardSortMetric = 'today' | 'weekly' | 'streak' | 'tasks';
+
+const CHEER_OPTIONS: Array<{ type: CheerType; emoji: string; labelBn: string; labelEn: string; color: string; bg: string }> = [
+  { type: 'applause', emoji: '👏', labelBn: 'করতালি ও সাধুবাদ', labelEn: 'Applause & Kudos', color: 'text-amber-600', bg: 'bg-amber-50 hover:bg-amber-100 border-amber-200' },
+  { type: 'fire', emoji: '🔥', labelBn: 'অনুপ্রেরণার আগুন', labelEn: 'On Fire!', color: 'text-orange-600', bg: 'bg-orange-50 hover:bg-orange-100 border-orange-200' },
+  { type: 'target', emoji: '🎯', labelBn: 'অবিচল লক্ষ্য', labelEn: 'Target Focus', color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
+  { type: 'star', emoji: '⭐', labelBn: 'স্টার পারফরম্যান্স', labelEn: 'Star Effort', color: 'text-yellow-600', bg: 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200' },
+  { type: 'heart', emoji: '❤️', labelBn: 'আন্তরিক ভালোবাসা', labelEn: 'Warm Wishes', color: 'text-rose-600', bg: 'bg-rose-50 hover:bg-rose-100 border-rose-200' },
+];
 
 export const FriendsView: React.FC = () => {
   const { 
     friends, 
-    addFriend, 
+    friendRequests,
+    friendCheers,
+    unreadCheersCount,
+    pendingRequestsCount,
+    sendFriendRequest,
+    acceptFriendRequest,
+    declineFriendRequest,
+    cancelFriendRequest,
     removeFriend, 
-    sendKudosToFriend, 
+    sendFriendCheer,
+    markCheerAsRead,
+    markAllCheersAsRead,
+    lookupStudentByCode,
     lookupStudentByEmail,
     user, 
     profile, 
     todayStudyMinutes, 
+    weeklyStudyMinutes,
     studyStreak, 
     completedTasksCount,
+    subjects,
+    sessions,
     language,
     t, 
     goBack, 
-    canGoBack, 
     registerModal,
     showToast 
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'today' | 'weekly'>('all');
+  const [activeTab, setActiveTab] = useState<FriendsTab>('friends');
+  const [leaderboardMetric, setLeaderboardMetric] = useState<LeaderboardSortMetric>('today');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
+  const [cheerModalTarget, setCheerModalTarget] = useState<{
+    receiverId: string;
+    name: string;
+    gender?: 'male' | 'female';
+    student_class?: string;
+    institution?: string;
+    replyToCheerId?: string;
+  } | null>(null);
   const [removeConfirmFriend, setRemoveConfirmFriend] = useState<Friend | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
 
-  // Form State
-  const [friendEmail, setFriendEmail] = useState('');
+  // Form State for Sending Friend Request by Student ID
+  const [friendCodeInput, setFriendCodeInput] = useState('');
   const [friendName, setFriendName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [institution, setInstitution] = useState('');
   const [friendGender, setFriendGender] = useState<'male' | 'female'>('male');
   const [isSearchingStudent, setIsSearchingStudent] = useState(false);
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
+  // Cheer Modal State
+  const [selectedCheerType, setSelectedCheerType] = useState<CheerType>('applause');
+  const [cheerCustomMsg, setCheerCustomMsg] = useState('');
+  const [isSendingCheer, setIsSendingCheer] = useState(false);
 
   useEffect(() => {
     if (isAddModalOpen) {
-      const unregister = registerModal('add-friend-modal');
-      return unregister;
+      return registerModal('add-friend-modal');
     }
   }, [isAddModalOpen, registerModal]);
 
   useEffect(() => {
+    if (cheerModalTarget) {
+      return registerModal('cheer-friend-modal');
+    }
+  }, [cheerModalTarget, registerModal]);
+
+  useEffect(() => {
     if (removeConfirmFriend) {
-      const unregister = registerModal('remove-friend-modal');
-      return unregister;
+      return registerModal('remove-friend-modal');
     }
   }, [removeConfirmFriend, registerModal]);
 
-  // Unique friend code based on email or id
+  // Unique student ID (e.g. SM-XXXXXX) for privacy and easy peer lookup
   const myFriendCode = useMemo(() => {
-    if (user?.email) return user.email;
-    if (profile?.email) return profile.email;
-    return 'student-' + (profile?.id || '2026').substring(0, 8);
+    if (profile?.student_code) return profile.student_code;
+    if (user?.id) return 'SM-' + user.id.replace(/-/g, '').substring(0, 6).toUpperCase();
+    return 'SM-' + (profile?.id || 'STUDENT').replace(/-/g, '').substring(0, 6).toUpperCase();
   }, [user, profile]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(myFriendCode);
     setCopiedCode(true);
-    showToast(t.friends.codeCopied, 'success');
+    showToast('স্টুডেন্ট আইডি কপি হয়েছে!', 'success');
     setTimeout(() => setCopiedCode(false), 2500);
   };
 
-  const handleEmailChange = async (val: string) => {
-    setFriendEmail(val);
-    const clean = val.trim().toLowerCase();
-    if (clean.includes('@') && clean.length > 5) {
+  const handleCodeChange = async (val: string) => {
+    setFriendCodeInput(val);
+    const clean = val.trim().toUpperCase();
+    if (clean.length >= 3) {
       setIsSearchingStudent(true);
       try {
-        const found = await lookupStudentByEmail(clean);
+        const found = await lookupStudentByCode(clean);
         if (found) {
           if (found.name) setFriendName(found.name);
           if (found.student_class) setStudentClass(found.student_class);
@@ -115,33 +168,34 @@ export const FriendsView: React.FC = () => {
     }
   };
 
-  const handleAddFriendSubmit = async (e: React.FormEvent) => {
+  const handleSendRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!friendEmail.trim()) {
-      showToast(t.common.requiredField, 'error');
+    if (!friendCodeInput.trim()) {
+      showToast('অনুগ্রহ করে বন্ধুর স্টুডেন্ট আইডি দিন', 'error');
       return;
     }
 
-    setIsSubmitting(true);
+    setIsSubmittingRequest(true);
     try {
-      const ok = await addFriend({
-        email: friendEmail.trim(),
+      const res = await sendFriendRequest({
+        student_code: friendCodeInput.trim().toUpperCase(),
         name: friendName.trim() || undefined,
         student_class: studentClass.trim() || undefined,
         institution: institution.trim() || undefined,
         gender: friendGender,
       });
 
-      if (ok) {
+      if (res.success) {
         setIsAddModalOpen(false);
-        setFriendEmail('');
+        setFriendCodeInput('');
         setFriendName('');
         setStudentClass('');
         setInstitution('');
         setLookupMessage(null);
+        setActiveTab('requests');
       }
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingRequest(false);
     }
   };
 
@@ -151,27 +205,150 @@ export const FriendsView: React.FC = () => {
     setRemoveConfirmFriend(null);
   };
 
-  // Filtered and sorted friends list
+  // Cheer Sending (Direct Kudos to Friend)
+  const handleOpenCheerModal = (friend: Friend) => {
+    const targetId = friend.user_id || friend.friend_code || friend.friend_email || friend.id;
+    setCheerModalTarget({
+      receiverId: targetId,
+      name: friend.friend_name,
+      gender: friend.gender,
+      student_class: friend.student_class,
+      institution: friend.institution,
+    });
+    setSelectedCheerType('applause');
+    setCheerCustomMsg('');
+  };
+
+  // Reply to Cheer (Requirement 5: Reply goes to peer, and auto-deletes incoming cheer as per Requirement 4)
+  const handleOpenReplyModal = (cheer: FriendCheer) => {
+    setCheerModalTarget({
+      receiverId: cheer.sender_id,
+      name: cheer.sender_name,
+      gender: cheer.sender_gender,
+      replyToCheerId: cheer.id,
+    });
+    setSelectedCheerType('applause');
+    setCheerCustomMsg('');
+  };
+
+  const handleSubmitCheer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cheerModalTarget) return;
+    setIsSendingCheer(true);
+    try {
+      await sendFriendCheer(cheerModalTarget.receiverId, selectedCheerType, cheerCustomMsg);
+      if (cheerModalTarget.replyToCheerId) {
+        // Auto-delete the original cheer upon reply
+        await markCheerAsRead(cheerModalTarget.replyToCheerId);
+        showToast(`${cheerModalTarget.name}-কে সাধুবাদের উত্তর পাঠানো হয়েছে! 👏`, 'success');
+      }
+      setCheerModalTarget(null);
+      setCheerCustomMsg('');
+    } finally {
+      setIsSendingCheer(false);
+    }
+  };
+
+  // Filtered friends list
   const filteredFriends = useMemo(() => {
     let list = [...friends];
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(f => 
-        f.friend_name.toLowerCase().includes(q) || 
-        f.friend_email.toLowerCase().includes(q) ||
+        (f.friend_name && f.friend_name.toLowerCase().includes(q)) || 
+        (f.friend_code && f.friend_code.toLowerCase().includes(q)) ||
+        (f.friend_email && f.friend_email.toLowerCase().includes(q)) ||
         (f.institution && f.institution.toLowerCase().includes(q))
       );
     }
+    return list;
+  }, [friends, searchQuery]);
 
-    if (activeTab === 'today') {
-      list.sort((a, b) => b.today_minutes - a.today_minutes);
-    } else if (activeTab === 'weekly') {
-      list.sort((a, b) => b.weekly_minutes - a.weekly_minutes);
+  // Compute User's Own Top Subject
+  const myTopSubjectName = useMemo(() => {
+    if (!sessions || sessions.length === 0) return 'পড়াশোনা চলছে';
+    const subMap: Record<string, number> = {};
+    sessions.forEach(s => {
+      if (s.subject_id) {
+        subMap[s.subject_id] = (subMap[s.subject_id] || 0) + (s.duration_minutes || 0);
+      }
+    });
+    let topId = '';
+    let max = 0;
+    Object.entries(subMap).forEach(([id, mins]) => {
+      if (mins > max) {
+        max = mins;
+        topId = id;
+      }
+    });
+    const sub = subjects.find(s => s.id === topId);
+    return sub ? sub.name : 'পড়াশোনা চলছে';
+  }, [sessions, subjects]);
+
+  // Live Combined Leaderboard (User + Accepted Friends)
+  const leaderboardList = useMemo(() => {
+    // Current user's live profile & study stats
+    const meEntry = {
+      id: user?.id || profile?.id || 'current-student-id',
+      name: profile?.full_name || 'আমার একাউন্ট',
+      email: user?.email || profile?.email || '',
+      student_class: profile?.student_class || 'শ্রেণি নির্ধারণ করুন',
+      institution: profile?.institution || 'প্রতিষ্ঠান যোগ করুন',
+      gender: profile?.gender || 'male',
+      today_minutes: todayStudyMinutes,
+      weekly_minutes: weeklyStudyMinutes,
+      study_streak: studyStreak,
+      completed_tasks: completedTasksCount,
+      top_subject: myTopSubjectName,
+      isMe: true,
+      friendObj: undefined as Friend | undefined,
+    };
+
+    const friendEntries = friends.map(f => ({
+      id: f.id,
+      name: f.friend_name,
+      email: f.friend_email,
+      student_class: f.student_class,
+      institution: f.institution,
+      gender: f.gender || 'male',
+      today_minutes: f.today_minutes,
+      weekly_minutes: f.weekly_minutes,
+      study_streak: f.study_streak,
+      completed_tasks: f.completed_tasks,
+      top_subject: f.last_studied_subject || 'পড়াশোনা চলছে',
+      isMe: false,
+      friendObj: f,
+    }));
+
+    const all = [meEntry, ...friendEntries];
+
+    // Sort according to metric
+    if (leaderboardMetric === 'today') {
+      all.sort((a, b) => b.today_minutes - a.today_minutes);
+    } else if (leaderboardMetric === 'weekly') {
+      all.sort((a, b) => b.weekly_minutes - a.weekly_minutes);
+    } else if (leaderboardMetric === 'streak') {
+      all.sort((a, b) => b.study_streak - a.study_streak);
+    } else if (leaderboardMetric === 'tasks') {
+      all.sort((a, b) => b.completed_tasks - a.completed_tasks);
     }
 
-    return list;
-  }, [friends, searchQuery, activeTab]);
+    return all;
+  }, [user, profile, todayStudyMinutes, weeklyStudyMinutes, studyStreak, completedTasksCount, myTopSubjectName, friends, leaderboardMetric]);
+
+  // Incoming and outgoing requests
+  const incomingRequests = useMemo(() => {
+    return friendRequests.filter(r => r.direction === 'incoming' && r.status === 'pending');
+  }, [friendRequests]);
+
+  const outgoingRequests = useMemo(() => {
+    return friendRequests.filter(r => r.direction === 'outgoing' && r.status === 'pending');
+  }, [friendRequests]);
+
+  const getCheerIconAndColor = (type: CheerType) => {
+    const opt = CHEER_OPTIONS.find(o => o.type === type);
+    return opt || CHEER_OPTIONS[0];
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-24 md:pb-8 animate-in fade-in">
@@ -180,7 +357,7 @@ export const FriendsView: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={goBack}
-            className="w-10 h-10 rounded-full bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95"
+            className="w-10 h-10 rounded-2xl bg-white dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 flex items-center justify-center text-charcoal-900 dark:text-white shadow-xs hover:bg-[#F2EDF8] dark:hover:bg-charcoal-700 transition cursor-pointer active:scale-95"
             title="পূর্ববর্তী পৃষ্ঠায় ফিরে যান"
             aria-label="Back"
           >
@@ -190,7 +367,7 @@ export const FriendsView: React.FC = () => {
             <h2 className="text-xl sm:text-2xl font-black text-charcoal-900 dark:text-white tracking-tight flex items-center gap-2">
               <span>{t.friends.title}</span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-lavender-100 text-charcoal-900 dark:bg-lavender-950 dark:text-lavender-300">
-                {friends.length} জন
+                {friends.length} জন বন্ধু
               </span>
             </h2>
             <p className="text-xs sm:text-sm text-charcoal-500 dark:text-slate-400 mt-0.5">
@@ -208,41 +385,52 @@ export const FriendsView: React.FC = () => {
         </button>
       </div>
 
-      {/* Student Share Card & Your Stats Highlight */}
+      {/* Student Share Card & Your Live Stats Highlight */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Your Profile & Metrics Card */}
+        {/* Your Profile & Live Stats Card */}
         <div className="md:col-span-2 bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs relative overflow-hidden">
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-13 h-13 rounded-2xl bg-[#C5A7E2] text-charcoal-900 font-black text-xl flex items-center justify-center shadow-xs">
-                {(profile?.full_name || 'R')[0]}
-              </div>
+              <StudentAvatar gender={profile?.gender || 'male'} size="lg" />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-base font-black text-charcoal-900 dark:text-white">
-                    {profile?.full_name || 'Rasu IT'}
+                    {profile?.full_name || 'আমার প্রোফাইল'}
                   </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-mint-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                     আপনি (You)
                   </span>
                 </div>
                 <div className="text-xs text-charcoal-500 dark:text-slate-400 font-semibold mt-0.5 flex items-center gap-2 flex-wrap">
-                  <span>{profile?.student_class || "Hon's 3rd Year"}</span>
+                  <span>{profile?.student_class || 'শ্রেণি নির্ধারণ করুন'}</span>
                   <span>•</span>
-                  <span>{profile?.institution || 'Maulvibazar Govt. College'}</span>
+                  <span>{profile?.institution || 'প্রতিষ্ঠান যোগ করুন'}</span>
                 </div>
               </div>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-lavender-50 dark:bg-lavender-950/60 border border-lavender-200 dark:border-lavender-800/80 text-[11px] font-bold text-lavender-800 dark:text-lavender-200">
+              <BookOpen className="w-3.5 h-3.5 text-lavender-600" />
+              <span className="truncate max-w-[120px]">{myTopSubjectName}</span>
             </div>
           </div>
 
           {/* Your Stats Grid */}
-          <div className="grid grid-cols-3 gap-2.5 pt-3 border-t border-[#E8E5ED] dark:border-charcoal-800 text-center">
+          <div className="grid grid-cols-4 gap-2 pt-3 border-t border-[#E8E5ED] dark:border-charcoal-800 text-center">
             <div className="p-2.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/80">
               <div className="text-[10px] font-black uppercase text-charcoal-400 dark:text-slate-400">
                 আজকের পড়া
               </div>
-              <div className="text-base font-black text-charcoal-900 dark:text-white mt-0.5">
+              <div className="text-sm sm:text-base font-black text-charcoal-900 dark:text-white mt-0.5">
                 {(todayStudyMinutes / 60).toFixed(1)}ঘ
+              </div>
+            </div>
+            <div className="p-2.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/80">
+              <div className="text-[10px] font-black uppercase text-charcoal-400 dark:text-slate-400">
+                চলতি সপ্তাহ
+              </div>
+              <div className="text-sm sm:text-base font-black text-charcoal-900 dark:text-white mt-0.5">
+                {(weeklyStudyMinutes / 60).toFixed(1)}ঘ
               </div>
             </div>
             <div className="p-2.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/80">
@@ -250,7 +438,7 @@ export const FriendsView: React.FC = () => {
                 <Flame className="w-3 h-3 text-amber-500 fill-amber-500" />
                 <span>স্ট্রিক</span>
               </div>
-              <div className="text-base font-black text-charcoal-900 dark:text-white mt-0.5">
+              <div className="text-sm sm:text-base font-black text-charcoal-900 dark:text-white mt-0.5">
                 {studyStreak} দিন
               </div>
             </div>
@@ -258,7 +446,7 @@ export const FriendsView: React.FC = () => {
               <div className="text-[10px] font-black uppercase text-charcoal-400 dark:text-slate-400">
                 টাস্ক সম্পন্ন
               </div>
-              <div className="text-base font-black text-charcoal-900 dark:text-white mt-0.5">
+              <div className="text-sm sm:text-base font-black text-charcoal-900 dark:text-white mt-0.5">
                 {completedTasksCount} টি
               </div>
             </div>
@@ -273,7 +461,7 @@ export const FriendsView: React.FC = () => {
               <span>{t.friends.myIdCard}</span>
             </div>
             <p className="text-xs text-charcoal-600 dark:text-slate-400">
-              বন্ধুদের এই কোড বা ইমেইল দিলে তারা আপনাকে স্টাডি পার্টনার হিসেবে যুক্ত করতে পারবে।
+              সহপাঠীদের এই স্টুডেন্ট আইডি দিলে তারা আপনাকে স্টাডি পার্টনার হিসেবে সরাসরি রিকুয়েষ্ট পাঠাতে পারবে।
             </p>
           </div>
 
@@ -294,171 +482,573 @@ export const FriendsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter and Tab Selectors */}
-      <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-4 sm:p-5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-3.5">
+      {/* Main Navigation Tabs */}
+      <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-3 sm:p-4 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Tab Selector Buttons */}
+          {/* Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-            {[
-              { id: 'all', label: t.friends.tabs.all, icon: Users },
-              { id: 'today', label: t.friends.tabs.todayLeaderboard, icon: Trophy },
-              { id: 'weekly', label: t.friends.tabs.weeklyLeaderboard, icon: Award },
-            ].map(({ id, label, icon: Icon }) => {
-              const isActive = activeTab === id;
-              return (
+            <button
+              onClick={() => setActiveTab('friends')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-black shrink-0 transition cursor-pointer ${
+                activeTab === 'friends'
+                  ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 shadow-xs'
+                  : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-lavender-200'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>{t.friends.tabs.all}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-lavender-200 dark:bg-charcoal-700 text-charcoal-900 dark:text-white">
+                {friends.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-full font-black shrink-0 transition cursor-pointer ${
+                activeTab === 'requests'
+                  ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 shadow-xs'
+                  : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-lavender-200'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>{t.friends.tabs.requests}</span>
+              {pendingRequestsCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                  {pendingRequestsCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-black shrink-0 transition cursor-pointer ${
+                activeTab === 'leaderboard'
+                  ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 shadow-xs'
+                  : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-lavender-200'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              <span>{t.friends.tabs.leaderboard}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('cheers')}
+              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-full font-black shrink-0 transition cursor-pointer ${
+                activeTab === 'cheers'
+                  ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 shadow-xs'
+                  : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-lavender-200'
+              }`}
+            >
+              <Heart className="w-3.5 h-3.5 text-rose-500" />
+              <span>{t.friends.tabs.cheers}</span>
+              {unreadCheersCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white">
+                  {unreadCheersCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Search Box (for friends tab) */}
+          {activeTab === 'friends' && (
+            <div className="relative sm:w-60">
+              <Search className="w-3.5 h-3.5 text-charcoal-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="বন্ধু বা কলেজ খুঁজুন..."
+                className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* TAB 1: FRIENDS LIST */}
+      {activeTab === 'friends' && (
+        <>
+          {filteredFriends.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredFriends.map((friend) => {
+                const todayHours = (friend.today_minutes / 60).toFixed(1);
+                const weeklyHours = (friend.weekly_minutes / 60).toFixed(1);
+
+                return (
+                  <div
+                    key={friend.id}
+                    className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs hover:border-lavender-300 transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Top Bar with Avatar, Info, and Remove Action */}
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <StudentAvatar gender={friend.gender || 'male'} size="md" />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-base font-black text-charcoal-900 dark:text-white truncate">
+                                {friend.friend_name}
+                              </h4>
+                              {(friend.friend_code || friend.user_id) && (
+                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-charcoal-800 text-charcoal-600 dark:text-slate-300">
+                                  {friend.friend_code || ('SM-' + friend.user_id.replace(/-/g, '').substring(0, 6).toUpperCase())}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-charcoal-500 dark:text-slate-400 truncate mt-0.5">
+                              {friend.student_class} {friend.institution ? `• ${friend.institution}` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => setRemoveConfirmFriend(friend)}
+                          title={t.friends.removeFriend}
+                          className="p-1.5 text-charcoal-300 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Live Study Metrics Grid */}
+                      <div className="grid grid-cols-4 gap-2 py-3 border-y border-[#E8E5ED] dark:border-charcoal-800/80 text-center my-3">
+                        <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
+                            আজকে
+                          </div>
+                          <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
+                            {todayHours}ঘ
+                          </div>
+                        </div>
+                        <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
+                            চলতি সপ্তাহ
+                          </div>
+                          <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
+                            {weeklyHours}ঘ
+                          </div>
+                        </div>
+                        <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400 flex items-center justify-center gap-0.5">
+                            <Flame className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+                            <span>স্ট্রিক</span>
+                          </div>
+                          <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
+                            {friend.study_streak}দিন
+                          </div>
+                        </div>
+                        <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
+                            টাস্ক
+                          </div>
+                          <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
+                            {friend.completed_tasks}টি
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer with Top Subject & Send Kudos/Cheer Button */}
+                    <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+                      <div className="flex items-center gap-1.5 text-charcoal-600 dark:text-slate-400 min-w-0">
+                        <BookOpen className="w-3.5 h-3.5 text-lavender-500 shrink-0" />
+                        <span className="truncate font-semibold text-[11px]">
+                          {friend.last_studied_subject || 'পড়াশোনা চলছে'}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleOpenCheerModal(friend)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFE49A] hover:bg-amber-300 text-charcoal-900 transition shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                        title="সাধুবাদ জানান ও উৎসাহ দিন"
+                      >
+                        <span>👏</span>
+                        <span>{t.friends.sendKudos}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-10 text-center border border-dashed border-[#E8E5ED] dark:border-charcoal-800 max-w-lg mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-[#F2EDF8] dark:bg-charcoal-800 text-lavender-600 flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8" />
+              </div>
+              <h3 className="font-black text-base text-charcoal-900 dark:text-white">
+                {t.friends.noFriends}
+              </h3>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                {t.friends.noFriendsDesc}
+              </p>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="mt-5 inline-flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs transition shadow-md cursor-pointer active:scale-95"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{t.friends.addFriend}</span>
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* TAB 2: FRIEND REQUESTS (INCOMING & OUTGOING) */}
+      {activeTab === 'requests' && (
+        <div className="space-y-6">
+          {/* Incoming Requests Section */}
+          <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-charcoal-900 dark:text-white flex items-center gap-2">
+                <Mail className="w-4 h-4 text-lavender-600 dark:text-lavender-400" />
+                <span>{t.friends.incomingRequests}</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-lavender-100 text-charcoal-900 dark:bg-lavender-950 dark:text-lavender-300">
+                  {incomingRequests.length}
+                </span>
+              </h3>
+            </div>
+
+            {incomingRequests.length > 0 ? (
+              <div className="divide-y divide-[#E8E5ED] dark:divide-charcoal-800">
+                {incomingRequests.map((req) => (
+                  <div key={req.id} className="py-4 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <StudentAvatar gender={req.sender_gender || 'female'} size="md" />
+                      <div>
+                        <h4 className="text-sm font-black text-charcoal-900 dark:text-white">
+                          {req.sender_name}
+                        </h4>
+                        <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-0.5">
+                          {req.sender_class} {req.sender_institution ? `• ${req.sender_institution}` : ''}
+                        </p>
+                        <p className="text-[11px] text-charcoal-500 font-mono mt-0.5">
+                          আইডি: {req.sender_code || req.sender_email || 'SM-STUDENT'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <button
+                        onClick={() => declineFriendRequest(req.id)}
+                        className="px-4 py-2 rounded-full text-xs font-bold text-charcoal-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-charcoal-800 dark:hover:bg-charcoal-700 transition cursor-pointer"
+                      >
+                        {t.friends.decline}
+                      </button>
+                      <button
+                        onClick={() => acceptFriendRequest(req.id)}
+                        className="px-5 py-2 rounded-full text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{t.friends.accept}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-charcoal-500 dark:text-slate-400 text-xs">
+                কোনো আগত বন্ধুত্বের আবেদন নেই
+              </div>
+            )}
+          </div>
+
+          {/* Outgoing Requests Section */}
+          <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
+            <h3 className="text-base font-black text-charcoal-900 dark:text-white flex items-center gap-2">
+              <Send className="w-4 h-4 text-sky-500" />
+              <span>{t.friends.outgoingRequests}</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-black bg-slate-100 text-charcoal-700 dark:bg-charcoal-800 dark:text-slate-300">
+                {outgoingRequests.length}
+              </span>
+            </h3>
+
+            {outgoingRequests.length > 0 ? (
+              <div className="divide-y divide-[#E8E5ED] dark:divide-charcoal-800">
+                {outgoingRequests.map((req) => (
+                  <div key={req.id} className="py-4 first:pt-1 last:pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 flex items-center justify-center font-bold">
+                        <UserPlus className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-black text-charcoal-900 dark:text-white">
+                            {req.receiver_name || req.receiver_email}
+                          </h4>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            {t.friends.pendingOutgoing}
+                          </span>
+                        </div>
+                        <p className="text-xs text-charcoal-500 dark:text-slate-400 font-mono mt-0.5">
+                          আইডি: {req.receiver_code || req.receiver_email || 'SM-STUDENT'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => cancelFriendRequest(req.id)}
+                      className="self-end sm:self-auto px-4 py-2 rounded-full text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 transition cursor-pointer"
+                    >
+                      {t.friends.cancelRequest}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-charcoal-500 dark:text-slate-400 text-xs">
+                কোনো প্রেরিত আবেদন অপেক্ষমান নেই
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: LIVE LEADERBOARD (LIVE METRICS RANKING) */}
+      {activeTab === 'leaderboard' && (
+        <div className="space-y-4">
+          {/* Metric Sort Selector */}
+          <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-4 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-charcoal-600 dark:text-slate-400">
+              র‍্যাঙ্কিংয়ের ভিত্তি:
+            </span>
+            <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+              {[
+                { id: 'today', label: t.friends.leaderboardSort.today, icon: Clock },
+                { id: 'weekly', label: t.friends.leaderboardSort.weekly, icon: Award },
+                { id: 'streak', label: t.friends.leaderboardSort.streak, icon: Flame },
+                { id: 'tasks', label: t.friends.leaderboardSort.tasks, icon: CheckCircle2 },
+              ].map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
-                  onClick={() => setActiveTab(id as any)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full font-black shrink-0 transition cursor-pointer ${
-                    isActive
-                      ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 shadow-xs'
+                  onClick={() => setLeaderboardMetric(id as any)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition cursor-pointer ${
+                    leaderboardMetric === id
+                      ? 'bg-charcoal-900 text-white dark:bg-white dark:text-charcoal-900 shadow-2xs'
                       : 'bg-[#F2EDF8] dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 hover:bg-lavender-200'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span>{label}</span>
                 </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Leaderboard Table / Cards */}
+          <div className="bg-white dark:bg-charcoal-900 rounded-[28px] border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs divide-y divide-[#E8E5ED] dark:divide-charcoal-800 overflow-hidden">
+            {leaderboardList.map((entry, idx) => {
+              const rank = idx + 1;
+              const rankColor = 
+                rank === 1 ? 'bg-amber-400 text-charcoal-900 ring-2 ring-amber-300' :
+                rank === 2 ? 'bg-slate-300 text-charcoal-900' :
+                rank === 3 ? 'bg-amber-600 text-white' :
+                'bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-600 dark:text-slate-300';
+
+              return (
+                <div
+                  key={entry.id}
+                  className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                    entry.isMe 
+                      ? 'bg-lavender-50/50 dark:bg-lavender-950/20 ring-1 ring-inset ring-lavender-200 dark:ring-lavender-900/60' 
+                      : 'hover:bg-[#F8F7FA] dark:hover:bg-charcoal-800/40'
+                  }`}
+                >
+                  {/* Left: Rank & Profile Info */}
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 ${rankColor}`}>
+                      #{rank}
+                    </div>
+
+                    <StudentAvatar gender={entry.gender as any} size="md" />
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm sm:text-base font-black text-charcoal-900 dark:text-white truncate">
+                          {entry.name}
+                        </h4>
+                        {entry.isMe && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            আপনি (You)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-charcoal-500 dark:text-slate-400 truncate mt-0.5">
+                        {entry.student_class} {entry.institution ? `• ${entry.institution}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Live Metrics & Kudos Action */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-11 sm:pl-0">
+                    <div className="text-right">
+                      {leaderboardMetric === 'today' && (
+                        <div>
+                          <div className="text-xs sm:text-sm font-black text-charcoal-900 dark:text-white">
+                            {(entry.today_minutes / 60).toFixed(1)} ঘণ্টা
+                          </div>
+                          <div className="text-[10px] text-charcoal-400">আজকের পড়া</div>
+                        </div>
+                      )}
+                      {leaderboardMetric === 'weekly' && (
+                        <div>
+                          <div className="text-xs sm:text-sm font-black text-charcoal-900 dark:text-white">
+                            {(entry.weekly_minutes / 60).toFixed(1)} ঘণ্টা
+                          </div>
+                          <div className="text-[10px] text-charcoal-400">চলতি সপ্তাহ</div>
+                        </div>
+                      )}
+                      {leaderboardMetric === 'streak' && (
+                        <div>
+                          <div className="text-xs sm:text-sm font-black text-charcoal-900 dark:text-white flex items-center justify-end gap-1">
+                            <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                            <span>{entry.study_streak} দিন</span>
+                          </div>
+                          <div className="text-[10px] text-charcoal-400">স্টাডি স্ট্রিক</div>
+                        </div>
+                      )}
+                      {leaderboardMetric === 'tasks' && (
+                        <div>
+                          <div className="text-xs sm:text-sm font-black text-charcoal-900 dark:text-white">
+                            {entry.completed_tasks} টি
+                          </div>
+                          <div className="text-[10px] text-charcoal-400">টাস্ক সম্পন্ন</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Top Subject Tag */}
+                    <div className="hidden md:block px-3 py-1 rounded-xl bg-[#F8F7FA] dark:bg-charcoal-800 text-[11px] font-semibold text-charcoal-600 dark:text-slate-400 max-w-[130px] truncate">
+                      {entry.top_subject}
+                    </div>
+
+                    {!entry.isMe && entry.friendObj && (
+                      <button
+                        onClick={() => {
+                          if (entry.friendObj) handleOpenCheerModal(entry.friendObj);
+                        }}
+                        className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFE49A] hover:bg-amber-300 text-charcoal-900 transition shadow-2xs cursor-pointer active:scale-95 shrink-0 flex items-center gap-1"
+                        title="সাধুবাদ জানান"
+                      >
+                        <span>👏</span>
+                        <span className="hidden sm:inline">{t.friends.sendKudos}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
-
-          {/* Search Box */}
-          <div className="relative sm:w-64">
-            <Search className="w-4 h-4 text-charcoal-400 absolute left-3.5 top-3" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="বন্ধু বা প্রতিষ্ঠান খুঁজুন..."
-              className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
-            />
-          </div>
         </div>
-      </div>
+      )}
 
-      {/* Friends Cards Grid */}
-      {filteredFriends.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredFriends.map((friend, idx) => {
-            const todayHours = (friend.today_minutes / 60).toFixed(1);
-            const weeklyHours = (friend.weekly_minutes / 60).toFixed(1);
+      {/* TAB 4: KUDOS & CHEERS (INBOX) */}
+      {activeTab === 'cheers' && (
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-4 sm:p-5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-black text-charcoal-900 dark:text-white flex items-center gap-2">
+                <Heart className="w-4 h-4 text-rose-500" />
+                <span>{t.friends.tabs.cheers}</span>
+              </h3>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-0.5">
+                সহপাঠীদের পাঠানো করতালি, সাধুবাদ ও অনুপ্রেরণামূলক শুভেচ্ছা
+              </p>
+            </div>
 
-            return (
-              <div
-                key={friend.id}
-                className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs hover:border-lavender-300 transition-all flex flex-col justify-between"
+            {friendCheers.length > 0 && (
+              <button
+                onClick={markAllCheersAsRead}
+                className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-charcoal-800 text-charcoal-700 dark:text-slate-300 transition cursor-pointer flex items-center gap-1"
               >
-                <div>
-                  {/* Top Bar with Avatar, Info, and Rank if leaderboard */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <StudentAvatar gender={friend.gender || 'male'} size="md" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-base font-black text-charcoal-900 dark:text-white truncate">
-                            {friend.friend_name}
-                          </h4>
-                          {activeTab !== 'all' && (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300">
-                              #{idx + 1}
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>সব পড়া হয়েছে</span>
+              </button>
+            )}
+          </div>
+
+          {friendCheers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {friendCheers.map((cheer) => {
+                const opt = getCheerIconAndColor(cheer.cheer_type);
+                const senderFriend = friends.find(f => f.friend_email === cheer.sender_id || f.user_id === cheer.sender_id || f.friend_name === cheer.sender_name);
+
+                return (
+                  <div
+                    key={cheer.id}
+                    className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 border border-[#E8E5ED] dark:border-charcoal-800 shadow-2xs hover:border-lavender-300 transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Top Header */}
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3">
+                          <StudentAvatar gender={cheer.sender_gender || 'male'} size="md" />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-black text-charcoal-900 dark:text-white">
+                                {cheer.sender_name}
+                              </h4>
+                            </div>
+                            <span className="text-[11px] text-charcoal-400">
+                              {new Date(cheer.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                             </span>
-                          )}
+                          </div>
                         </div>
-                        <p className="text-xs text-charcoal-500 dark:text-slate-400 truncate mt-0.5">
-                          {friend.student_class} {friend.institution ? `• ${friend.institution}` : ''}
+
+                        {/* Reaction Emoji Badge */}
+                        <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-xl shrink-0">
+                          {opt.emoji}
+                        </div>
+                      </div>
+
+                      {/* Message Body */}
+                      <div className="p-3.5 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/80 border border-[#E8E5ED] dark:border-charcoal-700/60 my-2">
+                        <p className="text-xs font-semibold text-charcoal-800 dark:text-slate-200 leading-relaxed">
+                          {cheer.message || `${cheer.sender_name} আপনাকে সাধুবাদ জানিয়েছেন! 👏`}
                         </p>
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setRemoveConfirmFriend(friend)}
-                      title={t.friends.removeFriend}
-                      className="p-1.5 text-charcoal-300 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                    {/* Footer: Mark as read (Auto Delete) & Reply to Friend */}
+                    <div className="pt-2 flex items-center justify-between gap-2 border-t border-[#E8E5ED] dark:border-charcoal-800 mt-2">
+                      <button
+                        onClick={() => markCheerAsRead(cheer.id)}
+                        className="px-3 py-1.5 rounded-full text-xs font-bold text-charcoal-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer flex items-center gap-1.5"
+                        title="পড়া হয়েছে চিহ্নিত করুন ও মুছে ফেলুন"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>পড়া হয়েছে</span>
+                      </button>
 
-                  {/* Friends Metrics Bar */}
-                  <div className="grid grid-cols-4 gap-2 py-3 border-y border-[#E8E5ED] dark:border-charcoal-800/80 text-center my-3">
-                    <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
-                      <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
-                        আজকে
-                      </div>
-                      <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
-                        {todayHours}ঘ
-                      </div>
-                    </div>
-                    <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
-                      <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
-                        সপ্তাহ
-                      </div>
-                      <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
-                        {weeklyHours}ঘ
-                      </div>
-                    </div>
-                    <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
-                      <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400 flex items-center justify-center gap-0.5">
-                        <Flame className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
-                        <span>স্ট্রিক</span>
-                      </div>
-                      <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
-                        {friend.study_streak}দিন
-                      </div>
-                    </div>
-                    <div className="p-2 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800/70">
-                      <div className="text-[9px] font-black uppercase tracking-wider text-charcoal-400 dark:text-slate-400">
-                        টাস্ক
-                      </div>
-                      <div className="text-xs font-black text-charcoal-900 dark:text-white mt-0.5">
-                        {friend.completed_tasks}টি
-                      </div>
+                      <button
+                        onClick={() => handleOpenReplyModal(cheer)}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-black bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 transition shadow-2xs cursor-pointer active:scale-95 flex items-center gap-1.5"
+                        title="সাধুবাদের উত্তর পাঠান"
+                      >
+                        <span>💬</span>
+                        <span>রিপ্লাই দিন</span>
+                      </button>
                     </div>
                   </div>
-                </div>
-
-                {/* Footer with Recent Subject & Kudos Button */}
-                <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-                  <div className="flex items-center gap-1.5 text-charcoal-500 dark:text-slate-400 truncate">
-                    <BookOpen className="w-3.5 h-3.5 text-lavender-500 shrink-0" />
-                    <span className="truncate">{friend.last_studied_subject || 'পড়াশোনা চলছে'}</span>
-                  </div>
-
-                  <button
-                    onClick={() => sendKudosToFriend(friend.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#FFE49A] hover:bg-amber-300 text-charcoal-900 transition shadow-2xs cursor-pointer active:scale-95 shrink-0"
-                    title="সাধুবাদ জানান ও উৎসাহ দিন"
-                  >
-                    <span>👏</span>
-                    <span>{t.friends.sendKudos}</span>
-                  </button>
-                </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-10 text-center border border-dashed border-[#E8E5ED] dark:border-charcoal-800 max-w-lg mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-[#F2EDF8] dark:bg-charcoal-800 text-rose-500 flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-8 h-8" />
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-charcoal-900 rounded-3xl p-10 text-center border border-dashed border-[#E8E5ED] dark:border-charcoal-800 max-w-lg mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-[#F2EDF8] dark:bg-charcoal-800 text-lavender-600 flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8" />
-          </div>
-          <h3 className="font-black text-base text-charcoal-900 dark:text-white">
-            {t.friends.noFriends}
-          </h3>
-          <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
-            {t.friends.noFriendsDesc}
-          </p>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="mt-5 inline-flex items-center gap-2 bg-charcoal-900 hover:bg-black text-white dark:bg-white dark:text-charcoal-900 px-5 py-2.5 rounded-full font-black text-xs transition shadow-md cursor-pointer active:scale-95"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>{t.friends.addFriend}</span>
-          </button>
+              <h3 className="font-black text-base text-charcoal-900 dark:text-white">
+                কোনো সাধুবাদ পাওয়া যায়নি
+              </h3>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                বন্ধুদের সাথে পড়াশোনা শুরু করুন এবং একে অপরকে শুভেচ্ছা ও সাধুবাদ পাঠান!
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Add Friend Modal */}
+      {/* MODAL 1: Send Friend Request Modal */}
       {isAddModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-charcoal-900/60 backdrop-blur-xs animate-in fade-in duration-200"
@@ -484,31 +1074,31 @@ export const FriendsView: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAddFriendSubmit} className="space-y-4">
+            <form onSubmit={handleSendRequestSubmit} className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300">
-                    {t.friends.friendEmailOrCode} *
+                    বন্ধুর স্টুডেন্ট আইডি (Student ID) *
                   </label>
                   {isSearchingStudent && (
                     <span className="flex items-center gap-1 text-[11px] font-bold text-lavender-600 animate-pulse">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      {t.friends.searchingStudent || 'খোঁজা হচ্ছে...'}
+                      {t.friends.searchingStudent}
                     </span>
                   )}
                 </div>
                 <div className="relative">
                   <input
-                    type="email"
+                    type="text"
                     required
-                    value={friendEmail}
-                    onChange={(e) => handleEmailChange(e.target.value)}
-                    placeholder="যেমন: classmate@gmail.com"
-                    className="w-full px-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400"
+                    value={friendCodeInput}
+                    onChange={(e) => handleCodeChange(e.target.value)}
+                    placeholder="যেমন: SM-A1B2C3"
+                    className="w-full px-3.5 py-2.5 text-sm font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400 font-mono uppercase"
                   />
                 </div>
                 <p className="text-[11px] text-charcoal-400 dark:text-slate-500 mt-1">
-                  {t.friends.autoLookupHint || 'ইমেইল লিখলে বন্ধুর নাম ও শিক্ষাপ্রতিষ্ঠান স্বয়ংক্রিয়ভাবে খুঁজে বের করা হবে'}
+                  বন্ধুর স্টুডেন্ট আইডি লিখলে তার প্রোফাইল স্বয়ংক্রিয়ভাবে খুঁজে বের করা হবে।
                 </p>
               </div>
 
@@ -614,10 +1204,11 @@ export const FriendsView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="px-5 py-2 rounded-full text-xs font-black text-white bg-charcoal-900 hover:bg-black dark:bg-white dark:text-charcoal-900 transition shadow-md cursor-pointer active:scale-95"
+                  disabled={isSubmittingRequest}
+                  className="px-5 py-2 rounded-full text-xs font-black text-white bg-charcoal-900 hover:bg-black dark:bg-white dark:text-charcoal-900 transition shadow-md cursor-pointer active:scale-95 flex items-center gap-1.5"
                 >
-                  {isSubmitting ? t.common.loading : t.friends.addFriend}
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isSubmittingRequest ? t.common.loading : t.friends.sendRequest}</span>
                 </button>
               </div>
             </form>
@@ -625,7 +1216,113 @@ export const FriendsView: React.FC = () => {
         </div>
       )}
 
-      {/* Remove Confirmation Modal */}
+      {/* MODAL 2: Send Cheer / Praise & Reply Modal */}
+      {cheerModalTarget && (
+        <div 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-charcoal-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setCheerModalTarget(null)}
+        >
+          <div 
+            className="w-full max-w-md bg-white dark:bg-charcoal-900 rounded-t-[32px] sm:rounded-3xl shadow-2xl border border-[#E8E5ED] dark:border-charcoal-800 p-6 relative max-h-[92vh] flex flex-col animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-1.5 bg-[#E8E5ED] dark:bg-charcoal-700 rounded-full mx-auto mb-4 sm:hidden shrink-0" />
+
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8E5ED] dark:border-charcoal-800 mb-4 shrink-0">
+              <h3 className="text-base sm:text-lg font-black text-charcoal-900 dark:text-white flex items-center gap-2">
+                <span>{cheerModalTarget.replyToCheerId ? '💬' : '👏'}</span>
+                <span>{cheerModalTarget.replyToCheerId ? 'সাধুবাদের উত্তর দিন' : t.friends.cheerModalTitle}</span>
+              </h3>
+              <button
+                onClick={() => setCheerModalTarget(null)}
+                className="p-1.5 text-charcoal-400 hover:text-charcoal-700 dark:hover:text-slate-200 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Recipient Profile Banner */}
+            <div className="p-3.5 rounded-2xl bg-lavender-50/70 dark:bg-charcoal-800 border border-lavender-200/80 dark:border-charcoal-700 flex items-center gap-3 mb-4">
+              <StudentAvatar gender={cheerModalTarget.gender || 'male'} size="md" />
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold text-lavender-700 dark:text-lavender-300 block">
+                  {cheerModalTarget.replyToCheerId ? 'উত্তরের প্রাপক বন্ধু' : 'প্রাপক বন্ধু (Recipient)'}
+                </span>
+                <h4 className="text-sm font-black text-charcoal-900 dark:text-white truncate">
+                  {cheerModalTarget.name}
+                </h4>
+                {cheerModalTarget.student_class && (
+                  <p className="text-[11px] text-charcoal-500 dark:text-slate-400 truncate">
+                    {cheerModalTarget.student_class} {cheerModalTarget.institution ? `• ${cheerModalTarget.institution}` : ''}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitCheer} className="space-y-4">
+              {/* Select Cheer Reaction Type */}
+              <div>
+                <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-2">
+                  সাধুবাদ ও প্রতিক্রিয়ার ধরন বেছে নিন
+                </label>
+                <div className="grid grid-cols-5 gap-2">
+                  {CHEER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.type}
+                      type="button"
+                      onClick={() => setSelectedCheerType(opt.type)}
+                      className={`p-2.5 rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                        selectedCheerType === opt.type
+                          ? 'border-lavender-500 ring-2 ring-lavender-300 bg-lavender-100 dark:bg-lavender-950 scale-105'
+                          : 'border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 hover:bg-[#F2EDF8]'
+                      }`}
+                    >
+                      <span className="text-xl">{opt.emoji}</span>
+                      <span className="text-[9px] font-black truncate max-w-full">
+                        {language === 'bn' ? opt.labelBn.split(' ')[0] : opt.labelEn.split(' ')[0]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Motivational message */}
+              <div>
+                <label className="block text-xs font-bold text-charcoal-700 dark:text-slate-300 mb-1">
+                  {t.friends.cheerCustomMsg}
+                </label>
+                <textarea
+                  rows={3}
+                  value={cheerCustomMsg}
+                  onChange={(e) => setCheerCustomMsg(e.target.value)}
+                  placeholder="যেমন: অনেক ধন্যবাদ বন্ধু! তুমিও প্রতিদিন রুটিন মেনে পড়াশোনা চালিয়ে যাও।"
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-2xl border border-[#E8E5ED] dark:border-charcoal-700 bg-[#F8F7FA] dark:bg-charcoal-800 text-charcoal-900 dark:text-white placeholder:text-charcoal-400 focus:outline-hidden focus:ring-2 focus:ring-lavender-400 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8E5ED] dark:border-charcoal-800">
+                <button
+                  type="button"
+                  onClick={() => setCheerModalTarget(null)}
+                  className="px-4 py-2 rounded-full text-xs font-bold text-charcoal-600 dark:text-slate-400 hover:bg-[#F2EDF8] transition cursor-pointer"
+                >
+                  {t.common.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingCheer}
+                  className="px-5 py-2.5 rounded-full text-xs font-black text-white bg-charcoal-900 hover:bg-black dark:bg-white dark:text-charcoal-900 transition shadow-md cursor-pointer active:scale-95 flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isSendingCheer ? t.common.loading : (cheerModalTarget.replyToCheerId ? 'উত্তর পাঠান' : t.friends.sendKudos)}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Remove Friend Confirmation Dialog */}
       {removeConfirmFriend && (
         <div 
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-charcoal-900/60 backdrop-blur-xs animate-in fade-in duration-200"

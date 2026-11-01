@@ -428,13 +428,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Fetch user's own data from Supabase
       try {
         const [subRes, taskRes, routRes, examRes, sessRes, profRes] = await Promise.all([
-          client.from('subjects').select('*').order('created_at', { ascending: true }),
-          client.from('tasks').select('*').order('due_date', { ascending: true }),
-          client.from('study_routines').select('*').order('start_time', { ascending: true }),
-          client.from('exams').select('*').order('exam_date', { ascending: true }),
-          client.from('study_sessions').select('*').order('completed_at', { ascending: false }),
+          client.from('subjects').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+          client.from('tasks').select('*').eq('user_id', user.id).order('due_date', { ascending: true }),
+          client.from('study_routines').select('*').eq('user_id', user.id).order('start_time', { ascending: true }),
+          client.from('exams').select('*').eq('user_id', user.id).order('exam_date', { ascending: true }),
+          client.from('study_sessions').select('*').eq('user_id', user.id).order('completed_at', { ascending: false }),
           client.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-          client.from('friendships').select('*').order('created_at', { ascending: false }),
+          client.from('friendships').select('*').or(`user_id.eq.${user.id},friend_id.eq.${user.id}`).order('created_at', { ascending: false }),
         ]);
 
         if (subRes.error) throw subRes.error;

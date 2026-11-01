@@ -70,8 +70,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
             </div>
             <div className="p-3 rounded-2xl bg-lavender-50 dark:bg-lavender-950/40 border border-lavender-200/70 dark:border-lavender-900/60 text-center">
               <EyeOff className="w-4 h-4 text-lavender-600 dark:text-lavender-400 mx-auto mb-1" />
-              <div className="font-black text-[11px] text-lavender-900 dark:text-lavender-300">বিজ্ঞাপনমুক্ত</div>
-              <div className="text-[10px] text-lavender-700 dark:text-lavender-400/80">কোনো ট্র্যাকিং নেই</div>
+              <div className="font-black text-[11px] text-lavender-900 dark:text-lavender-300">তথ্য সুরক্ষা</div>
+              <div className="text-[10px] text-lavender-700 dark:text-lavender-400/80">সর্বোচ্চ গোপনীয়তা</div>
             </div>
             <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-900/60 text-center">
               <UserCheck className="w-4 h-4 text-sky-600 dark:text-sky-400 mx-auto mb-1" />
@@ -148,14 +148,14 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
             </p>
           </div>
 
-          {/* Section 6: No Third-Party Commercial Sale */}
+          {/* Section 6: No Unauthorized Data Sale */}
           <div className="space-y-2">
             <h3 className="text-sm font-black text-charcoal-900 dark:text-white flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>৬. বিজ্ঞাপন ও বাণিজ্যিক শেয়ারিং নিষিদ্ধ</span>
+              <span>৬. ব্যক্তিগত তথ্য বিক্রি বা অপব্যবহার নিষিদ্ধ</span>
             </h3>
             <p>
-              আমরা শিক্ষার্থীদের কোনো তথ্য কোনো বিজ্ঞাপন সংস্থা, ডাটা ব্রোকার বা তৃতীয় পক্ষের কাছে বিক্রি, ভাড়া বা শেয়ার করি না। অ্যাপের একমাত্র উদ্দেশ্য পড়াশোনায় মনোযোগ বৃদ্ধি করা।
+              আমরা শিক্ষার্থীদের কোনো ব্যক্তিগত তথ্য কোনো ডাটা ব্রোকার বা অননুমোদিত তৃতীয় পক্ষের কাছে বিক্রি বা ভাড়া দিই না। আপনার পড়াশোনার রেকর্ড সম্পূর্ণ নিরাপদ।
             </p>
           </div>
 

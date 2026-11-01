@@ -266,19 +266,12 @@ CREATE POLICY "Users can delete own profile"
   TO authenticated
   USING (auth.uid() = id);
 
--- 2. Subjects Policies
+-- 2. Subjects Policies (Personal & Private to each student - no cross-user leakage)
 DROP POLICY IF EXISTS "Users can view own subjects" ON public.subjects;
 CREATE POLICY "Users can view own subjects"
   ON public.subjects FOR SELECT
   TO authenticated
-  USING (
-    auth.uid() = user_id 
-    OR EXISTS (
-      SELECT 1 FROM public.friendships 
-      WHERE (user_id = auth.uid() AND friend_id = public.subjects.user_id)
-         OR (friend_id = auth.uid() AND user_id = public.subjects.user_id)
-    )
-  );
+  USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can insert own subjects" ON public.subjects;
 CREATE POLICY "Users can insert own subjects"
@@ -299,19 +292,12 @@ CREATE POLICY "Users can delete own subjects"
   TO authenticated
   USING (auth.uid() = user_id);
 
--- 3. Tasks Policies
+-- 3. Tasks Policies (Personal & Private to each student)
 DROP POLICY IF EXISTS "Users can view own tasks" ON public.tasks;
 CREATE POLICY "Users can view own tasks"
   ON public.tasks FOR SELECT
   TO authenticated
-  USING (
-    auth.uid() = user_id 
-    OR EXISTS (
-      SELECT 1 FROM public.friendships 
-      WHERE (user_id = auth.uid() AND friend_id = public.tasks.user_id)
-         OR (friend_id = auth.uid() AND user_id = public.tasks.user_id)
-    )
-  );
+  USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can insert own tasks" ON public.tasks;
 CREATE POLICY "Users can insert own tasks"

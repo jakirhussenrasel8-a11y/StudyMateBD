@@ -13,6 +13,7 @@ import {
   BellRing
 } from 'lucide-react';
 import { StudentAvatar } from './StudentAvatar';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   onOpenAuth: () => void;
@@ -101,6 +102,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAuth }) => {
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* PWA Install Button (Prompt / iOS guidance) */}
+          <PWAInstallButton variant="header" />
+
           {/* Study Streak Badge with Soft Warm Yellow */}
           <div 
             title={`${studyStreak} ${t.dashboard.streakFire}`}

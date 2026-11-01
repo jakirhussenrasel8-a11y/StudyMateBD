@@ -1,19 +1,33 @@
 {
+  "id": "/",
   "name": "StudyMate BD - Student Study Planner",
   "short_name": "StudyMate BD",
-  "description": "Mobile-first student study planner for Bangladeshi students. Routines, tasks, exams, Pomodoro timer, and analytics.",
+  "description": "Mobile-first student study planner for Bangladeshi students with offline routine, tasks, exam countdown, and Pomodoro focus timer.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#faf5f6",
-  "theme_color": "#f43f5e",
+  "background_color": "#F8F7FA",
+  "theme_color": "#C5A7E2",
   "lang": "bn",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

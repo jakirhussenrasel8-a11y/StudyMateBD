@@ -5,6 +5,7 @@ import { Sidebar } from './components/common/Sidebar';
 import { BottomNav } from './components/common/BottomNav';
 import { Toast } from './components/common/Toast';
 import { AuthModal } from './components/auth/AuthModal';
+import { OfflineIndicator } from './components/common/OfflineIndicator';
 
 import { DashboardView } from './components/dashboard/DashboardView';
 import { SubjectsView } from './components/subjects/SubjectsView';
@@ -44,6 +45,9 @@ const MainLayout: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-[#F8F7FA] dark:bg-[#0E0D12] text-charcoal-900 dark:text-[#F1F1F5] transition-colors w-full max-w-full overflow-x-hidden">
       {/* Toast Notifications */}
       <Toast />
+
+      {/* Offline Status Pill for Unstable Internet */}
+      <OfflineIndicator />
 
       {/* Auth Modal */}
       <AuthModal 

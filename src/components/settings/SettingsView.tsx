@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { StudentAvatar } from '../common/StudentAvatar';
 import { PrivacyPolicyModal } from '../common/PrivacyPolicyModal';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 export const SettingsView: React.FC = () => {
   const { 
@@ -88,6 +89,16 @@ export const SettingsView: React.FC = () => {
   }, [isPrivacyModalOpen, registerModal]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGenderSelect = async (gender: 'male' | 'female') => {
+    setStudentGender(gender);
+    await updateProfile({
+      gender,
+      full_name: studentName.trim(),
+      student_class: studentClass.trim(),
+      institution: institution.trim(),
+    });
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,7 +197,7 @@ export const SettingsView: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setStudentGender('male')}
+                onClick={() => handleGenderSelect('male')}
                 className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer text-left ${
                   studentGender === 'male'
                     ? 'border-sky-400 bg-sky-50 dark:bg-sky-950/40 ring-2 ring-sky-300'
@@ -206,7 +217,7 @@ export const SettingsView: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setStudentGender('female')}
+                onClick={() => handleGenderSelect('female')}
                 className={`flex items-center gap-3 p-3.5 rounded-2xl border transition cursor-pointer text-left ${
                   studentGender === 'female'
                     ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/40 ring-2 ring-rose-300'
@@ -292,6 +303,9 @@ export const SettingsView: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* PWA App Install Card */}
+      <PWAInstallButton variant="card" />
 
       {/* 2. Language & Theme Preferences */}
       <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">

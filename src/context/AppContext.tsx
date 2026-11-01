@@ -1309,13 +1309,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode && user && client) {
       try {
-        // Only send columns that exist in the profiles database schema
+        // Send all profile columns including gender to Supabase profiles database schema
         const profilePayload: Record<string, any> = {
           id: user.id,
           email: user.email || '',
           full_name: updatedProfileObj.full_name,
           student_class: updatedProfileObj.student_class,
           institution: updatedProfileObj.institution,
+          gender: updatedProfileObj.gender || 'male',
           target_study_hours_per_day: updatedProfileObj.target_study_hours_per_day,
           preferred_language: updatedProfileObj.preferred_language,
           updated_at: new Date().toISOString(),
@@ -1327,14 +1328,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (error) throw error;
 
-        // Persist gender into auth metadata if available
+        // Persist gender into auth metadata as well
         if (updatedProfileObj.gender) {
-          client.auth.updateUser({
-            data: { gender: updatedProfileObj.gender }
-          }).catch(() => {});
+          try {
+            await client.auth.updateUser({
+              data: { 
+                gender: updatedProfileObj.gender,
+                full_name: updatedProfileObj.full_name 
+              }
+            });
+          } catch {}
         }
 
-        showToast('শিক্ষার্থীর তথ্য সুপাবেজে সংরক্ষিত হয়েছে!', 'success');
+        showToast('শিক্ষার্থীর প্রোফাইল সফলভাবে আপডেট হয়েছে!', 'success');
         return true;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);

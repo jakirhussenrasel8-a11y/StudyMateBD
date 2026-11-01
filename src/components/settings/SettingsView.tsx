@@ -18,9 +18,13 @@ import {
   School,
   Building2,
   Check,
-  Sparkles
+  Sparkles,
+  FileText,
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { StudentAvatar } from '../common/StudentAvatar';
+import { PrivacyPolicyModal } from '../common/PrivacyPolicyModal';
 
 export const SettingsView: React.FC = () => {
   const { 
@@ -59,9 +63,10 @@ export const SettingsView: React.FC = () => {
     }
   }, [profile]);
 
-  // Confirmation Modals State
+  // Confirmation & Policy Modals State
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -75,6 +80,12 @@ export const SettingsView: React.FC = () => {
       return registerModal('delete-account-modal');
     }
   }, [showDeleteConfirm, registerModal]);
+
+  useEffect(() => {
+    if (isPrivacyModalOpen) {
+      return registerModal('privacy-policy-modal');
+    }
+  }, [isPrivacyModalOpen, registerModal]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -466,6 +477,59 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
+      {/* 5. Privacy & Data Protection Policy */}
+      <div className="bg-white dark:bg-charcoal-900 rounded-[28px] p-5 sm:p-6 border border-[#E8E5ED] dark:border-charcoal-800 shadow-xs space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-base text-charcoal-900 dark:text-white">
+                প্রাইভেসি ও পলিসি (Privacy Policy)
+              </h3>
+              <p className="text-xs text-charcoal-500 dark:text-slate-400">
+                শিক্ষার্থীদের তথ্যের পূর্ণ নিরাপত্তা, এনক্রিপশন ও ১০০% ডেটা মুছে ফেলার নীতিমালা
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex px-3 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80">
+            ১০০% সুরক্ষিত
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#F8F7FA] dark:bg-charcoal-800 border border-[#E8E5ED] dark:border-charcoal-700 text-xs text-charcoal-600 dark:text-slate-400 space-y-1.5">
+          <div className="flex items-center gap-2 text-charcoal-900 dark:text-white font-black">
+            <span>🛡️ শিক্ষার্থীদের নিরাপত্তা অগ্রাধিকার</span>
+          </div>
+          <p className="leading-relaxed">
+            StudyMate BD-তে আপনার সমস্ত পড়ালেখার তথ্য ক্লাউড RLS (Row-Level Security) দ্বারা সুরক্ষিত। আপনার অনুমতি ছাড়া অন্য কেউ আপনার পড়ার সময় দেখতে পারে না এবং কোনো বিজ্ঞাপন নেই।
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsPrivacyModalOpen(true)}
+          className="w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 transition cursor-pointer group active:scale-98"
+        >
+          <div className="flex items-center gap-3">
+            <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="text-left">
+              <div className="text-xs font-black text-charcoal-900 dark:text-white">
+                বিস্তারিত প্রাইভেসি পলিসি ও ডেটা সুরক্ষা নিয়মাবলী পড়ুন
+              </div>
+              <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                গোপনীয়তা, পিয়ার শেয়ারিং ও ডিলিট পলিসি
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-black text-emerald-700 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
+            <span>পড়ুন</span>
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </button>
+      </div>
+
       {/* Delete Account Confirmation Dialog */}
       {showDeleteConfirm && (
         <div 
@@ -554,6 +618,12 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal 
+        isOpen={isPrivacyModalOpen} 
+        onClose={() => setIsPrivacyModalOpen(false)} 
+      />
     </div>
   );
 };

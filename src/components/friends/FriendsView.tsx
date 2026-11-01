@@ -216,7 +216,7 @@ export const FriendsView: React.FC = () => {
 
   // Cheer Sending (Direct Kudos to Friend)
   const handleOpenCheerModal = (friend: Friend) => {
-    const targetId = friend.user_id || friend.friend_code || friend.friend_email || friend.id;
+    const targetId = friend.friend_id || friend.id;
     setCheerModalTarget({
       receiverId: targetId,
       name: friend.friend_name,
@@ -598,9 +598,9 @@ export const FriendsView: React.FC = () => {
                               <h4 className="text-base font-black text-charcoal-900 dark:text-white truncate">
                                 {friend.friend_name}
                               </h4>
-                              {(friend.friend_code || friend.user_id) && (
+                              {(friend.friend_code || friend.friend_id) && (
                                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-charcoal-800 text-charcoal-600 dark:text-slate-300">
-                                  {friend.friend_code || ('SM-' + friend.user_id.replace(/-/g, '').substring(0, 6).toUpperCase())}
+                                  {friend.friend_code || (friend.friend_id ? 'SM-' + friend.friend_id.replace(/-/g, '').substring(0, 6).toUpperCase() : '')}
                                 </span>
                               )}
                             </div>

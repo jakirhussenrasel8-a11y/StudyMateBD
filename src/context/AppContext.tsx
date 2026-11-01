@@ -500,88 +500,105 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
 
           if (friendships && friendships.length > 0) {
-            const friendUserIds = Array.from(new Set(friendships.map(f => f.user_id === user.id ? f.friend_id : f.user_id)));
-            const { data: profiles } = await client
-              .from('profiles')
-              .select('id, email, full_name, student_class, institution, gender')
-              .in('id', friendUserIds);
+            const friendUserIds = Array.from(new Set(
+              friendships
+                .map(f => f.user_id === user.id ? f.friend_id : f.user_id)
+                .filter(id => id && id !== user.id)
+            ));
 
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            const { data: sessionsData } = await client
-              .from('study_sessions')
-              .select('user_id, subject_id, duration_minutes, completed_at')
-              .in('user_id', friendUserIds)
-              .gte('completed_at', oneWeekAgo.toISOString());
+            if (friendUserIds.length > 0) {
+              const { data: profiles } = await client
+                .from('profiles')
+                .select('id, email, student_code, full_name, student_class, institution, gender')
+                .in('id', friendUserIds);
 
-            const { data: tasksData } = await client
-              .from('tasks')
-              .select('user_id, status')
-              .in('user_id', friendUserIds)
-              .eq('status', 'completed');
+              const oneWeekAgo = new Date();
+              oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+              const { data: sessionsData } = await client
+                .from('study_sessions')
+                .select('user_id, subject_id, duration_minutes, completed_at')
+                .in('user_id', friendUserIds)
+                .gte('completed_at', oneWeekAgo.toISOString());
 
-            const { data: subjectsData } = await client
-              .from('subjects')
-              .select('id, user_id, name')
-              .in('user_id', friendUserIds);
+              const { data: tasksData } = await client
+                .from('tasks')
+                .select('user_id, status')
+                .in('user_id', friendUserIds)
+                .eq('status', 'completed');
 
-            const todayStr = getDhakaDateString();
+              const { data: subjectsData } = await client
+                .from('subjects')
+                .select('id, user_id, name')
+                .in('user_id', friendUserIds);
 
-            const cloudFriends: Friend[] = friendships.map(f => {
-              const friendUserId = f.user_id === user.id ? f.friend_id : f.user_id;
-              const p = profiles?.find(pr => pr.id === friendUserId);
-              const friendSessions = (sessionsData || []).filter(s => s.user_id === friendUserId);
-              const friendTasks = (tasksData || []).filter(t => t.user_id === friendUserId);
-              
-              const todayMins = friendSessions
-                .filter(s => s.completed_at && s.completed_at.startsWith(todayStr))
-                .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+              const todayStr = getDhakaDateString();
 
-              const weeklyMins = friendSessions
-                .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+              // Strictly deduplicate by friendUserId: exactly one Friend card per distinct user
+              const cloudFriends: Friend[] = friendUserIds.map(friendUserId => {
+                const f = friendships.find(item => 
+                  (item.user_id === user.id && item.friend_id === friendUserId) ||
+                  (item.user_id === friendUserId && item.friend_id === user.id)
+                );
+                const p = profiles?.find(pr => pr.id === friendUserId);
+                const friendSessions = (sessionsData || []).filter(s => s.user_id === friendUserId);
+                const friendTasks = (tasksData || []).filter(t => t.user_id === friendUserId);
+                
+                const todayMins = friendSessions
+                  .filter(s => s.completed_at && s.completed_at.startsWith(todayStr))
+                  .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
 
-              const subjectTimeMap: Record<string, number> = {};
-              friendSessions.forEach(s => {
-                if (s.subject_id) {
-                  subjectTimeMap[s.subject_id] = (subjectTimeMap[s.subject_id] || 0) + s.duration_minutes;
-                }
+                const weeklyMins = friendSessions
+                  .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+
+                const subjectTimeMap: Record<string, number> = {};
+                friendSessions.forEach(s => {
+                  if (s.subject_id) {
+                    subjectTimeMap[s.subject_id] = (subjectTimeMap[s.subject_id] || 0) + s.duration_minutes;
+                  }
+                });
+                let topSubjectId = '';
+                let maxTime = 0;
+                Object.entries(subjectTimeMap).forEach(([sId, time]) => {
+                  if (time > maxTime) {
+                    maxTime = time;
+                    topSubjectId = sId;
+                  }
+                });
+                const topSubObj = subjectsData?.find(sub => sub.id === topSubjectId);
+
+                const sessionDays = new Set(
+                  friendSessions.map(s => s.completed_at ? s.completed_at.split('T')[0] : '')
+                );
+                const streakCount = sessionDays.size;
+
+                return {
+                  id: f?.id || friendUserId,
+                  user_id: user.id,
+                  friend_id: friendUserId,
+                  friend_code: p?.student_code || ('SM-' + friendUserId.replace(/-/g, '').substring(0, 6).toUpperCase()),
+                  friend_email: p?.email || '',
+                  friend_name: p?.full_name || p?.email?.split('@')[0] || 'সহপাঠী',
+                  student_class: p?.student_class || 'একাদশ শ্রেণি',
+                  institution: p?.institution || 'শিক্ষা প্রতিষ্ঠান',
+                  gender: (p?.gender as any) || 'male',
+                  today_minutes: todayMins,
+                  weekly_minutes: weeklyMins,
+                  study_streak: Math.max(streakCount, 1),
+                  completed_tasks: friendTasks.length,
+                  status: 'accepted',
+                  last_studied_subject: topSubObj?.name || 'পড়াশোনা চলছে',
+                  last_active: 'ক্লাউড সিঙ্কড',
+                };
               });
-              let topSubjectId = '';
-              let maxTime = 0;
-              Object.entries(subjectTimeMap).forEach(([sId, time]) => {
-                if (time > maxTime) {
-                  maxTime = time;
-                  topSubjectId = sId;
-                }
-              });
-              const topSubObj = subjectsData?.find(sub => sub.id === topSubjectId);
-
-              const sessionDays = new Set(
-                friendSessions.map(s => s.completed_at ? s.completed_at.split('T')[0] : '')
-              );
-              const streakCount = sessionDays.size;
-
-              return {
-                id: f.id,
-                user_id: user.id,
-                friend_email: p?.email || 'student@example.com',
-                friend_name: p?.full_name || p?.email?.split('@')[0] || 'সহপাঠী',
-                student_class: p?.student_class || 'একাদশ শ্রেণি',
-                institution: p?.institution || 'শিক্ষা প্রতিষ্ঠান',
-                gender: (p?.gender as any) || 'male',
-                today_minutes: todayMins,
-                weekly_minutes: weeklyMins,
-                study_streak: Math.max(streakCount, 1),
-                completed_tasks: friendTasks.length,
-                status: 'accepted',
-                last_studied_subject: topSubObj?.name || 'পড়াশোনা চলছে',
-                last_active: 'ক্লাউড সিঙ্কড',
-              };
-            });
-            setFriends(cloudFriends);
-            try {
-              localStorage.setItem('studymate_friends', JSON.stringify(cloudFriends));
-            } catch {}
+              setFriends(cloudFriends);
+              try {
+                localStorage.setItem('studymate_friends', JSON.stringify(cloudFriends));
+              } catch {}
+            } else {
+              setFriends([]);
+            }
+          } else {
+            setFriends([]);
           }
 
           // Fetch friend requests
@@ -621,11 +638,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setFriendRequests(mappedRequests);
           }
 
-          // Fetch friend cheers
+          // Fetch friend cheers (only received by current user)
           const { data: cheersData } = await client
             .from('friend_cheers')
             .select('*')
-            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+            .eq('receiver_id', user.id)
             .order('created_at', { ascending: false })
             .limit(50);
 
@@ -1344,96 +1361,112 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
 
       if (!fErr && friendships && friendships.length > 0) {
-        const friendUserIds = Array.from(new Set(friendships.map(f => f.user_id === user.id ? f.friend_id : f.user_id)));
+        const friendUserIds = Array.from(new Set(
+          friendships
+            .map(f => f.user_id === user.id ? f.friend_id : f.user_id)
+            .filter(id => id && id !== user.id)
+        ));
         
-        // Fetch profiles
-        const { data: profiles } = await client
-          .from('profiles')
-          .select('id, email, full_name, student_class, institution, gender')
-          .in('id', friendUserIds);
+        if (friendUserIds.length > 0) {
+          // Fetch profiles
+          const { data: profiles } = await client
+            .from('profiles')
+            .select('id, email, student_code, full_name, student_class, institution, gender')
+            .in('id', friendUserIds);
 
-        // Fetch study sessions in last 7 days for stats
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const { data: sessionsData } = await client
-          .from('study_sessions')
-          .select('user_id, subject_id, duration_minutes, completed_at')
-          .in('user_id', friendUserIds)
-          .gte('completed_at', oneWeekAgo.toISOString());
+          // Fetch study sessions in last 7 days for stats
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          const { data: sessionsData } = await client
+            .from('study_sessions')
+            .select('user_id, subject_id, duration_minutes, completed_at')
+            .in('user_id', friendUserIds)
+            .gte('completed_at', oneWeekAgo.toISOString());
 
-        // Fetch completed tasks
-        const { data: tasksData } = await client
-          .from('tasks')
-          .select('user_id, status')
-          .in('user_id', friendUserIds)
-          .eq('status', 'completed');
+          // Fetch completed tasks
+          const { data: tasksData } = await client
+            .from('tasks')
+            .select('user_id, status')
+            .in('user_id', friendUserIds)
+            .eq('status', 'completed');
 
-        // Fetch subjects for name mapping
-        const { data: subjectsData } = await client
-          .from('subjects')
-          .select('id, user_id, name')
-          .in('user_id', friendUserIds);
+          // Fetch subjects for name mapping
+          const { data: subjectsData } = await client
+            .from('subjects')
+            .select('id, user_id, name')
+            .in('user_id', friendUserIds);
 
-        const todayStr = getDhakaDateString();
+          const todayStr = getDhakaDateString();
 
-        const mappedFriends: Friend[] = friendships.map(f => {
-          const friendUserId = f.user_id === user.id ? f.friend_id : f.user_id;
-          const p = profiles?.find(pr => pr.id === friendUserId);
-          const friendSessions = (sessionsData || []).filter(s => s.user_id === friendUserId);
-          const friendTasks = (tasksData || []).filter(t => t.user_id === friendUserId);
-          
-          const todayMins = friendSessions
-            .filter(s => s.completed_at && s.completed_at.startsWith(todayStr))
-            .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+          // Strictly deduplicate by friendUserId
+          const mappedFriends: Friend[] = friendUserIds.map(friendUserId => {
+            const f = friendships.find(item => 
+              (item.user_id === user.id && item.friend_id === friendUserId) ||
+              (item.user_id === friendUserId && item.friend_id === user.id)
+            );
+            const p = profiles?.find(pr => pr.id === friendUserId);
+            const friendSessions = (sessionsData || []).filter(s => s.user_id === friendUserId);
+            const friendTasks = (tasksData || []).filter(t => t.user_id === friendUserId);
+            
+            const todayMins = friendSessions
+              .filter(s => s.completed_at && s.completed_at.startsWith(todayStr))
+              .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
 
-          const weeklyMins = friendSessions
-            .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
+            const weeklyMins = friendSessions
+              .reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
 
-          // Find top studied subject
-          const subjectTimeMap: Record<string, number> = {};
-          friendSessions.forEach(s => {
-            if (s.subject_id) {
-              subjectTimeMap[s.subject_id] = (subjectTimeMap[s.subject_id] || 0) + s.duration_minutes;
-            }
+            // Find top studied subject
+            const subjectTimeMap: Record<string, number> = {};
+            friendSessions.forEach(s => {
+              if (s.subject_id) {
+                subjectTimeMap[s.subject_id] = (subjectTimeMap[s.subject_id] || 0) + s.duration_minutes;
+              }
+            });
+            let topSubjectId = '';
+            let maxTime = 0;
+            Object.entries(subjectTimeMap).forEach(([sId, time]) => {
+              if (time > maxTime) {
+                maxTime = time;
+                topSubjectId = sId;
+              }
+            });
+            const topSubObj = subjectsData?.find(sub => sub.id === topSubjectId);
+
+            // Calculate streak
+            const sessionDays = new Set(
+              friendSessions.map(s => s.completed_at ? s.completed_at.split('T')[0] : '')
+            );
+            const streakCount = sessionDays.size;
+
+            return {
+              id: f?.id || friendUserId,
+              user_id: user.id,
+              friend_id: friendUserId,
+              friend_code: p?.student_code || ('SM-' + friendUserId.replace(/-/g, '').substring(0, 6).toUpperCase()),
+              friend_email: p?.email || '',
+              friend_name: p?.full_name || p?.email?.split('@')[0] || 'সহপাঠী',
+              student_class: p?.student_class || 'একাদশ শ্রেণি',
+              institution: p?.institution || 'শিক্ষা প্রতিষ্ঠান',
+              gender: (p?.gender as any) || 'male',
+              today_minutes: todayMins,
+              weekly_minutes: weeklyMins,
+              study_streak: Math.max(streakCount, 1),
+              completed_tasks: friendTasks.length,
+              status: 'accepted',
+              last_studied_subject: topSubObj?.name || 'পড়াশোনা চলছে',
+              last_active: 'ক্লাউড সিঙ্কড',
+            };
           });
-          let topSubjectId = '';
-          let maxTime = 0;
-          Object.entries(subjectTimeMap).forEach(([sId, time]) => {
-            if (time > maxTime) {
-              maxTime = time;
-              topSubjectId = sId;
-            }
-          });
-          const topSubObj = subjectsData?.find(sub => sub.id === topSubjectId);
 
-          // Calculate streak
-          const sessionDays = new Set(
-            friendSessions.map(s => s.completed_at ? s.completed_at.split('T')[0] : '')
-          );
-          const streakCount = sessionDays.size;
-
-          return {
-            id: f.id,
-            user_id: user.id,
-            friend_email: p?.email || 'student@example.com',
-            friend_name: p?.full_name || p?.email?.split('@')[0] || 'সহপাঠী',
-            student_class: p?.student_class || 'একাদশ শ্রেণি',
-            institution: p?.institution || 'শিক্ষা প্রতিষ্ঠান',
-            gender: (p?.gender as any) || 'male',
-            today_minutes: todayMins,
-            weekly_minutes: weeklyMins,
-            study_streak: Math.max(streakCount, 1),
-            completed_tasks: friendTasks.length,
-            status: 'accepted',
-            last_studied_subject: topSubObj?.name || 'পড়াশোনা চলছে',
-            last_active: 'ক্লাউড সিঙ্কড',
-          };
-        });
-
-        setFriends(mappedFriends);
-        try {
-          localStorage.setItem('studymate_friends', JSON.stringify(mappedFriends));
-        } catch {}
+          setFriends(mappedFriends);
+          try {
+            localStorage.setItem('studymate_friends', JSON.stringify(mappedFriends));
+          } catch {}
+        } else {
+          setFriends([]);
+        }
+      } else {
+        setFriends([]);
       }
 
       // 2. Fetch friend requests
@@ -1474,11 +1507,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFriendRequests(mappedRequests);
       }
 
-      // 3. Fetch friend cheers
+      // 3. Fetch friend cheers (only received cheers)
       const { data: cheersData } = await client
         .from('friend_cheers')
         .select('*')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .eq('receiver_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -1820,12 +1853,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .update({ status: 'accepted', updated_at: new Date().toISOString() })
           .eq('id', requestId);
 
-        await client
+        // Check if friendship row already exists to prevent duplicate friendships
+        const { data: existing } = await client
           .from('friendships')
-          .insert([
-            { user_id: user.id, friend_id: targetReq.sender_id },
-            { user_id: targetReq.sender_id, friend_id: user.id }
-          ]);
+          .select('id')
+          .or(`and(user_id.eq.${user.id},friend_id.eq.${targetReq.sender_id}),and(user_id.eq.${targetReq.sender_id},friend_id.eq.${user.id})`)
+          .limit(1);
+
+        if (!existing || existing.length === 0) {
+          await client
+            .from('friendships')
+            .insert([
+              { user_id: user.id, friend_id: targetReq.sender_id }
+            ]);
+        }
 
         await refreshFriendsData();
         showToast(t.friends.requestAccepted, 'success');
@@ -1840,6 +1881,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const newFriend: Friend = {
         id: 'frnd_' + Math.random().toString(36).substring(2, 9),
         user_id: user?.id || 'demo-user-student-bd',
+        friend_id: targetReq.sender_id,
+        friend_code: targetReq.sender_code || ('SM-' + targetReq.sender_id.replace(/-/g, '').substring(0, 6).toUpperCase()),
         friend_email: targetReq.sender_email,
         friend_name: targetReq.sender_name,
         student_class: targetReq.sender_class || 'একাদশ শ্রেণি (HSC 2026)',
@@ -1920,16 +1963,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isDemoMode, user, showToast, t]);
 
   const removeFriend = useCallback(async (id: string): Promise<boolean> => {
+    const targetFriend = friends.find(f => f.id === id || f.friend_id === id);
+    const friendUserId = targetFriend?.friend_id;
     const client = getSupabaseClient();
     if (!isDemoMode && user && client) {
       try {
-        await client.from('friendships').delete().or(`id.eq.${id},user_id.eq.${user.id},friend_id.eq.${user.id}`);
+        if (friendUserId) {
+          await client.from('friendships').delete().or(`and(user_id.eq.${user.id},friend_id.eq.${friendUserId}),and(user_id.eq.${friendUserId},friend_id.eq.${user.id})`);
+        } else {
+          await client.from('friendships').delete().or(`id.eq.${id},user_id.eq.${user.id},friend_id.eq.${user.id}`);
+        }
       } catch (e) {
         console.warn('Friendship delete error:', e);
       }
     }
     setFriends(prev => {
-      const next = prev.filter(f => f.id !== id);
+      const next = prev.filter(f => f.id !== id && f.friend_id !== (friendUserId || id));
       try {
         localStorage.setItem('studymate_demo_friends_v2', JSON.stringify(next));
         localStorage.setItem('studymate_friends', JSON.stringify(next));
@@ -1938,25 +1987,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     showToast('বন্ধু তালিকা থেকে সরানো হয়েছে', 'info');
     return true;
-  }, [isDemoMode, user, showToast]);
+  }, [isDemoMode, user, friends, showToast]);
 
   const sendFriendCheer = useCallback(async (receiverId: string, cheerType: CheerType, message?: string): Promise<boolean> => {
-    const senderName = profile?.full_name || user?.email?.split('@')[0] || 'সহপাঠী';
-    const senderGender = profile?.gender || 'male';
-    const myId = user?.id || 'demo-user-student-bd';
-
-    const newCheer: FriendCheer = {
-      id: 'cheer_' + Math.random().toString(36).substring(2, 9),
-      sender_id: myId,
-      receiver_id: receiverId,
-      sender_name: senderName,
-      sender_gender: senderGender,
-      cheer_type: cheerType,
-      message: message?.trim() || undefined,
-      is_read: false,
-      created_at: new Date().toISOString(),
-    };
-
     const client = getSupabaseClient();
     if (!isDemoMode && user && client) {
       try {
@@ -1973,17 +2006,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    setFriendCheers(prev => {
-      const next = [newCheer, ...prev];
-      try {
-        localStorage.setItem('studymate_demo_cheers_v2', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-
+    // Crucial: Sent cheer must NEVER appear in sender's own received cheers inbox!
+    // friendCheers state is exclusively for incoming kudos sent by friends.
     showToast(t.friends.kudosSent, 'success');
     return true;
-  }, [isDemoMode, user, profile, showToast, t]);
+  }, [isDemoMode, user, showToast, t]);
 
   const markCheerAsRead = useCallback(async (cheerId: string) => {
     // 1. Immediately delete from local state
